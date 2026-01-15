@@ -1,25 +1,22 @@
 // ======================
-// PIXEL CASINO (ONE LONG FILE — UPDATED)
-// Goals:
-// - Crisp pixelated 3D (no fuzz)
-// - Classic casino ROOM (not a void) + better coloring/detail via pixel textures
-// - Smooth layout (clear zones)
-// - Games MORE playable: Slots + Roulette betting + Blackjack (UI overlays)
-// - Clear visuals: each game reads instantly (shapes + colors + icons)
-// - Floating nametags above each game (pixel-styled)
-// - WASD + mouse look (higher sens, not crazy)
-// - Howler sounds with NO audio files (generated)
+// GTA-STYLE SMOOTH CASINO (ONE FILE main.js)
+// - Smooth graphics (no pixel pipeline)
+// - Decor: chandeliers, paintings, velvet ropes, plants, bar glow, signage
+// - Crowd: dancers + gamblers (PG-13 vibe)
+// - WASD + mouse look (pointer lock), tuned sensitivity
+// - 120Hz simulation step (render uses monitor refresh automatically)
+// - Playable games with real-ish rules:
+//   * European Roulette (0-36) standard wheel order, real payouts
+//   * Blackjack (dealer stands on 17, blackjack payout 3:2, double-down)
+//   * Slots (reel strips + paytable + 1 payline evaluation)
+// - Howler ambience (generated) no external audio files
 // ======================
 
-console.log("Pixel Casino main.js (updated) loaded ✅");
+console.log("Smooth Casino main.js loaded ✅");
 
 // ---------- Crash catcher ----------
-window.addEventListener("error", (e) => {
-  console.error("JS ERROR:", e.message, "at", e.filename + ":" + e.lineno + ":" + e.colno);
-});
-window.addEventListener("unhandledrejection", (e) => {
-  console.error("PROMISE ERROR:", e.reason);
-});
+window.addEventListener("error", (e) => console.error("JS ERROR:", e.message, "at", e.filename + ":" + e.lineno + ":" + e.colno));
+window.addEventListener("unhandledrejection", (e) => console.error("PROMISE ERROR:", e.reason));
 
 // ======================
 // DOM + base CSS
@@ -27,10 +24,10 @@ window.addEventListener("unhandledrejection", (e) => {
 const canvas = document.getElementById("c");
 const overlay = document.getElementById("overlay");
 
-(function injectBaseCSS() {
+(function injectCSS() {
   const css = `
     html, body { margin:0; height:100%; overflow:hidden; background:#000; }
-    #c { width:100vw; height:100vh; display:block; image-rendering: pixelated; image-rendering: crisp-edges; }
+    #c { width:100vw; height:100vh; display:block; }
     #overlay{
       position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
       background:rgba(0,0,0,.75); color:#fff; z-index:9999; cursor:pointer;
@@ -39,27 +36,27 @@ const overlay = document.getElementById("overlay");
     }
     .uiWrap{
       position:fixed; inset:0; display:none; align-items:center; justify-content:center;
-      background:rgba(0,0,0,.55); z-index:9998; backdrop-filter: blur(6px);
+      background:rgba(0,0,0,.55); z-index:9998; backdrop-filter: blur(8px);
       font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
       color:#fff;
     }
     .uiCard{
-      width:min(620px, 92vw);
+      width:min(720px, 92vw);
       border-radius:18px;
-      background:rgba(16,14,24,.92);
-      border:1px solid rgba(255,255,255,.10);
-      box-shadow:0 30px 80px rgba(0,0,0,.55);
+      background:rgba(16,14,24,.94);
+      border:1px solid rgba(255,255,255,.12);
+      box-shadow:0 30px 90px rgba(0,0,0,.60);
       overflow:hidden;
     }
     .uiHead{
       padding:16px 18px;
       display:flex; align-items:center; justify-content:space-between;
-      background:linear-gradient(90deg, rgba(255,43,214,.18), rgba(43,247,255,.10));
-      border-bottom:1px solid rgba(255,255,255,.08);
+      background:linear-gradient(90deg, rgba(255,43,214,.20), rgba(43,247,255,.12));
+      border-bottom:1px solid rgba(255,255,255,.10);
     }
     .uiTitle{ font-weight:1000; letter-spacing:.6px; }
     .uiClose{
-      cursor:pointer; border:0; background:rgba(255,255,255,.08);
+      cursor:pointer; border:0; background:rgba(255,255,255,.10);
       color:#fff; padding:8px 10px; border-radius:10px;
       font-weight:900;
     }
@@ -67,33 +64,34 @@ const overlay = document.getElementById("overlay");
     .uiRow{ display:flex; gap:12px; flex-wrap:wrap; }
     .pill{
       padding:10px 12px; border-radius:14px; background:rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.08);
-      min-width: 160px;
+      border:1px solid rgba(255,255,255,.10);
+      min-width: 170px;
     }
     .uiBtns{ display:flex; gap:10px; flex-wrap:wrap; margin-top:14px; }
     .btn{
-      cursor:pointer; border:1px solid rgba(255,255,255,.12);
-      background:rgba(255,255,255,.06);
+      cursor:pointer; border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.08);
       color:#fff; padding:10px 12px; border-radius:14px;
       font-weight:950;
     }
     .btnPrimary{
       background:linear-gradient(90deg, rgba(255,43,214,.35), rgba(43,247,255,.22));
-      border:1px solid rgba(255,255,255,.18);
+      border:1px solid rgba(255,255,255,.20);
     }
     .msg{
       margin-top:12px; padding:10px 12px; border-radius:14px;
-      background:rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.10);
-      color:rgba(255,255,255,.92);
+      background:rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.12);
+      color:rgba(255,255,255,.94);
       min-height: 22px;
+      line-height: 1.3;
     }
     .hint{
       position:fixed; left:14px; bottom:14px; z-index:9997;
       padding:10px 12px; border-radius:14px;
-      background:rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.12);
-      color:rgba(255,255,255,.86);
+      background:rgba(0,0,0,.38); border:1px solid rgba(255,255,255,.12);
+      color:rgba(255,255,255,.88);
       font:900 13px system-ui, -apple-system, Segoe UI, Roboto, Arial;
-      max-width: 640px;
+      max-width: 720px;
       line-height: 1.25;
     }
   `;
@@ -105,14 +103,22 @@ const overlay = document.getElementById("overlay");
 const hint = document.createElement("div");
 hint.className = "hint";
 hint.innerHTML = `
-  <div><b>WASD</b> move • <b>Shift</b> sprint • <b>Mouse</b> look</div>
-  <div><b>Click a game</b> to open its UI: <span style="color:#2bf7ff">Roulette</span> • <span style="color:#ff2bd6">Slots</span> • <span style="color:#ffd42b">Blackjack</span></div>
-  <div>Tip: Adjust pixelation in code via <b>PIXEL_SCALE</b> (2 = best “Pixel Gun” vibe)</div>
+  <div><b>WASD</b> move • <b>Shift</b> sprint • <b>Mouse</b> look • <b>Esc</b> closes a game UI</div>
+  <div>Click games to play: <span style="color:#2bf7ff"><b>ROULETTE</b></span> • <span style="color:#ff2bd6"><b>SLOTS</b></span> • <span style="color:#ffd42b"><b>BLACKJACK</b></span></div>
 `;
 document.body.appendChild(hint);
 
+const hud = document.createElement("div");
+hud.className = "hint";
+hud.style.left = "auto";
+hud.style.right = "14px";
+hud.style.maxWidth = "240px";
+hud.innerHTML = `<div><b>BALANCE</b></div><div id="hudBal">$1000</div>`;
+document.body.appendChild(hud);
+const hudBal = document.getElementById("hudBal");
+
 // ======================
-// HOWLER — generated sounds (NO files)
+// HOWLER — generated ambience (no files)
 // ======================
 function wavDataURIFromMonoFloat(samples, sampleRate = 44100) {
   const numSamples = samples.length;
@@ -123,10 +129,7 @@ function wavDataURIFromMonoFloat(samples, sampleRate = 44100) {
 
   const buffer = new ArrayBuffer(44 + dataSize);
   const view = new DataView(buffer);
-
-  function writeStr(offset, str) {
-    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
-  }
+  const writeStr = (off, str) => { for (let i = 0; i < str.length; i++) view.setUint8(off + i, str.charCodeAt(i)); };
 
   writeStr(0, "RIFF");
   view.setUint32(4, 36 + dataSize, true);
@@ -157,17 +160,34 @@ function wavDataURIFromMonoFloat(samples, sampleRate = 44100) {
   return `data:audio/wav;base64,${btoa(bin)}`;
 }
 
-function makeNoiseLoop(seconds = 1.3, amp = 0.22, sampleRate = 44100) {
+function makeNoise(seconds = 1.2, amp = 0.18, sampleRate = 44100) {
   const n = Math.floor(seconds * sampleRate);
   const s = new Float32Array(n);
   let last = 0;
   for (let i = 0; i < n; i++) {
     const r = (Math.random() * 2 - 1) * amp;
-    last = last * 0.93 + r * 0.07;
+    last = last * 0.92 + r * 0.08;
     s[i] = last;
   }
   return wavDataURIFromMonoFloat(s, sampleRate);
 }
+
+function makeMurmur(seconds = 1.6, amp = 0.10, sampleRate = 44100) {
+  const n = Math.floor(seconds * sampleRate);
+  const s = new Float32Array(n);
+  let v = 0;
+  let phase = 0;
+  for (let i = 0; i < n; i++) {
+    // low formant-ish wobble + noise, feels like a crowd bed
+    phase += (2 * Math.PI * (80 + 20 * Math.sin(i / sampleRate * 0.6))) / sampleRate;
+    const tone = Math.sin(phase) * 0.12 + Math.sin(phase * 0.5) * 0.08;
+    const noise = (Math.random() * 2 - 1) * amp;
+    v = v * 0.94 + (tone + noise) * 0.06;
+    s[i] = v;
+  }
+  return wavDataURIFromMonoFloat(s, sampleRate);
+}
+
 function makeClick(seconds = 0.03, amp = 0.95, sampleRate = 44100) {
   const n = Math.floor(seconds * sampleRate);
   const s = new Float32Array(n);
@@ -178,13 +198,14 @@ function makeClick(seconds = 0.03, amp = 0.95, sampleRate = 44100) {
   }
   return wavDataURIFromMonoFloat(s, sampleRate);
 }
-function makeTone(freq = 440, seconds = 0.14, amp = 0.25, type = "sine", sampleRate = 44100) {
+
+function makeTone(freq = 440, seconds = 0.14, amp = 0.22, type = "sine", sampleRate = 44100) {
   const n = Math.floor(seconds * sampleRate);
   const s = new Float32Array(n);
   for (let i = 0; i < n; i++) {
     const t = i / sampleRate;
-    const attack = Math.min(1, i / (0.01 * sampleRate));
-    const decay = Math.pow(1 - i / n, 2);
+    const attack = Math.min(1, i / (0.012 * sampleRate));
+    const decay = Math.pow(1 - i / n, 2.2);
     const env = attack * decay;
 
     const ph = 2 * Math.PI * freq * t;
@@ -199,406 +220,436 @@ function makeTone(freq = 440, seconds = 0.14, amp = 0.25, type = "sine", sampleR
 }
 
 const SND = {
-  ambience: new Howl({ src: [makeNoiseLoop(1.35, 0.22)], loop: true, volume: 0.26 }),
+  roomAir:  new Howl({ src: [makeNoise(1.25, 0.12)], loop: true, volume: 0.18 }),
+  crowd:    new Howl({ src: [makeMurmur(1.65, 0.10)], loop: true, volume: 0.22 }),
   chip:     new Howl({ src: [makeClick(0.03, 0.95)], volume: 0.65 }),
-  roul:     new Howl({ src: [makeTone(160, 0.22, 0.18, "saw")], volume: 0.55 }),
-  slotSpin: new Howl({ src: [makeTone(260, 0.18, 0.18, "square")], volume: 0.55 }),
-  win1:     new Howl({ src: [makeTone(523.25, 0.14, 0.25, "sine")], volume: 0.85 }),
-  win2:     new Howl({ src: [makeTone(659.25, 0.14, 0.22, "sine")], volume: 0.85 }),
-  win3:     new Howl({ src: [makeTone(783.99, 0.16, 0.20, "sine")], volume: 0.85 })
+  roul:     new Howl({ src: [makeTone(140, 0.22, 0.16, "saw")], volume: 0.50 }),
+  slotSpin: new Howl({ src: [makeTone(260, 0.18, 0.16, "square")], volume: 0.52 }),
+  win1:     new Howl({ src: [makeTone(523.25, 0.14, 0.22, "sine")], volume: 0.80 }),
+  win2:     new Howl({ src: [makeTone(659.25, 0.14, 0.20, "sine")], volume: 0.80 }),
+  win3:     new Howl({ src: [makeTone(783.99, 0.16, 0.18, "sine")], volume: 0.80 })
 };
+
 function playChip() { SND.chip.play(); }
-function playRoulette() { SND.roul.play(); }
-function playSlotSpin() { SND.slotSpin.play(); }
-function playWin() {
-  SND.win1.play();
-  setTimeout(() => SND.win2.play(), 110);
-  setTimeout(() => SND.win3.play(), 220);
-}
+function playWin() { SND.win1.play(); setTimeout(()=>SND.win2.play(), 110); setTimeout(()=>SND.win3.play(), 220); }
 
 // ======================
-// THREE — renderer + crisp pixel pipeline
+// ECONOMY
 // ======================
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: false });
-renderer.setPixelRatio(1);
+const Economy = {
+  balance: 1000,
+  clampBet(b) { return Math.max(5, Math.min(1000, b|0)); },
+  canBet(b) { return this.balance >= b; },
+  bet(b) { this.balance -= b; },
+  pay(x) { this.balance += x; }
+};
+function updateHUD() { hudBal.textContent = `$${Economy.balance}`; }
+updateHUD();
+
+// ======================
+// THREE — Smooth renderer
+// ======================
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.setSize(innerWidth, innerHeight);
-
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-// Keep tone mapping mild to avoid “smear”
-renderer.toneMapping = THREE.NoToneMapping;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
 renderer.physicallyCorrectLights = true;
 
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0a0711);
-// IMPORTANT: no fog (fog makes pixel look fuzzy)
-scene.fog = null;
+scene.background = new THREE.Color(0x07060b);
 
-const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.1, 350);
+const camera = new THREE.PerspectiveCamera(70, innerWidth / innerHeight, 0.1, 400);
 camera.rotation.order = "YXZ";
 
-// ===== PIXEL SCALE knob =====
-// 2 = best “Pixel Gun 3D” vibe (crisp), 3 = chunkier
-let PIXEL_SCALE = 2;
+// ======================
+// LIGHTING (casino vibe)
+// ======================
+scene.add(new THREE.AmbientLight(0xffffff, 0.05));
+scene.add(new THREE.HemisphereLight(0xb8d3ff, 0x120014, 0.15));
 
-const lowRes = { rt: null, w: 0, h: 0 };
-const blitScene = new THREE.Scene();
-const blitCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
-const blitMat = new THREE.MeshBasicMaterial({ map: null });
-blitMat.toneMapped = false; // CRITICAL: prevents tonemapping blur
-const blitQuad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), blitMat);
-blitScene.add(blitQuad);
+const key = new THREE.SpotLight(0xfff2d2, 950, 260, Math.PI/6, 0.45, 1.1);
+key.position.set(0, 22, 6);
+key.target.position.set(0, 0, 0);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+scene.add(key, key.target);
 
-function rebuildLowResTarget() {
-  const w = Math.max(1, Math.floor(innerWidth / PIXEL_SCALE));
-  const h = Math.max(1, Math.floor(innerHeight / PIXEL_SCALE));
-  lowRes.w = w; lowRes.h = h;
+const neonPink = new THREE.PointLight(0xff2bd6, 160, 85, 2);
+neonPink.position.set(-26, 8, 12);
+scene.add(neonPink);
 
-  if (lowRes.rt) lowRes.rt.dispose();
-  lowRes.rt = new THREE.WebGLRenderTarget(w, h, {
-    minFilter: THREE.NearestFilter,
-    magFilter: THREE.NearestFilter,
-    depthBuffer: true,
-    stencilBuffer: false
-  });
-  lowRes.rt.texture.minFilter = THREE.NearestFilter;
-  lowRes.rt.texture.magFilter = THREE.NearestFilter;
-  lowRes.rt.texture.generateMipmaps = false;
+const neonCyan = new THREE.PointLight(0x2bf7ff, 160, 85, 2);
+neonCyan.position.set(26, 8, -12);
+scene.add(neonCyan);
 
-  blitMat.map = lowRes.rt.texture;
-  blitMat.needsUpdate = true;
-}
-rebuildLowResTarget();
+const neonGold = new THREE.PointLight(0xffd42b, 110, 70, 2);
+neonGold.position.set(0, 9, -34);
+scene.add(neonGold);
 
 // ======================
-// Pixel textures (CanvasTexture with NearestFilter)
+// Materials / simple procedural textures
 // ======================
-function makePixelTexture(drawFn, size = 64) {
+function canvasTex(drawFn, size = 256) {
   const c = document.createElement("canvas");
   c.width = c.height = size;
   const g = c.getContext("2d");
-  g.imageSmoothingEnabled = false;
-
   drawFn(g, size);
-
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.minFilter = THREE.NearestFilter;
-  tex.magFilter = THREE.NearestFilter;
-  tex.generateMipmaps = false;
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  return tex;
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.anisotropy = 8;
+  return t;
 }
 
+const wallTex = canvasTex((g,s)=>{
+  g.fillStyle="#16121d"; g.fillRect(0,0,s,s);
+  // panels
+  for (let y=0;y<s;y+=64){
+    for (let x=0;x<s;x+=64){
+      g.fillStyle = ((x+y)/64)%2 ? "#1e1830" : "#241c33";
+      g.fillRect(x+4,y+6,56,52);
+      g.fillStyle="rgba(255,255,255,0.05)";
+      g.fillRect(x+8,y+10,30,2);
+    }
+  }
+  // trim lines
+  g.fillStyle="#b58a2a";
+  for (let i=0;i<s;i+=32) g.fillRect(i,0,2,s);
+}, 256);
+wallTex.repeat.set(4, 2);
+
+const carpetTex = canvasTex((g,s)=>{
+  g.fillStyle="#2a0d33"; g.fillRect(0,0,s,s);
+  // pattern
+  for (let y=0;y<s;y+=24){
+    for (let x=0;x<s;x+=24){
+      const on = ((x/24 + y/24) % 2) === 0;
+      g.fillStyle = on ? "#3b1249" : "#1c0822";
+      g.fillRect(x,y,24,24);
+      g.fillStyle="rgba(255,212,43,0.12)";
+      g.beginPath(); g.arc(x+12,y+12,3,0,Math.PI*2); g.fill();
+    }
+  }
+  g.strokeStyle="rgba(43,247,255,0.10)";
+  g.lineWidth=2;
+  for (let i=0;i<12;i++){
+    g.beginPath();
+    g.moveTo(0, i*s/12);
+    g.lineTo(s, i*s/12);
+    g.stroke();
+  }
+}, 256);
+carpetTex.repeat.set(8, 8);
+
+const woodTex = canvasTex((g,s)=>{
+  g.fillStyle="#3b2416"; g.fillRect(0,0,s,s);
+  for (let y=0;y<s;y++){
+    const w = 0.08 + 0.05*Math.sin(y*0.06);
+    g.fillStyle = `rgba(0,0,0,${w})`;
+    g.fillRect(0,y,s,1);
+  }
+  g.fillStyle="rgba(181,138,42,0.35)";
+  g.fillRect(0, 10, s, 6);
+  g.fillRect(0, s-16, s, 6);
+}, 256);
+woodTex.repeat.set(2, 2);
+
 // ======================
-// Lighting — classic casino (warm + neon accents)
+// ROOM (real interior)
 // ======================
-scene.add(new THREE.AmbientLight(0xffffff, 0.06));
-scene.add(new THREE.HemisphereLight(0xaec7ff, 0x120014, 0.14));
-
-const spotKey = new THREE.SpotLight(0xfff2d2, 820, 220, Math.PI / 5.5, 0.45, 1.1);
-spotKey.position.set(0, 22, 8);
-spotKey.target.position.set(0, 0, 0);
-spotKey.castShadow = true;
-spotKey.shadow.mapSize.set(2048, 2048);
-scene.add(spotKey);
-scene.add(spotKey.target);
-
-const neonA = new THREE.PointLight(0xff2bd6, 140, 80, 2);
-neonA.position.set(-22, 8, 18);
-scene.add(neonA);
-
-const neonB = new THREE.PointLight(0x2bf7ff, 140, 80, 2);
-neonB.position.set(22, 8, -18);
-scene.add(neonB);
-
-const neonC = new THREE.PointLight(0xffd42b, 95, 60, 2);
-neonC.position.set(0, 9, -34);
-scene.add(neonC);
-
-// ======================
-// ROOM — better detail (walls + carpet + ceiling)
-// ======================
-const ROOM_W = 120;
-const ROOM_D = 120;
+const ROOM_W = 130;
+const ROOM_D = 130;
 const ROOM_H = 22;
 
-const wallTex = makePixelTexture((g, s) => {
-  g.fillStyle = "#141018";
-  g.fillRect(0, 0, s, s);
-
-  // panel grid
-  for (let y = 0; y < s; y += 16) {
-    for (let x = 0; x < s; x += 16) {
-      g.fillStyle = ((x + y) % 32 === 0) ? "#241c33" : "#1e1830";
-      g.fillRect(x + 1, y + 1, 14, 14);
-      // small highlight
-      g.fillStyle = "rgba(255,255,255,0.07)";
-      g.fillRect(x + 2, y + 2, 6, 1);
-    }
-  }
-
-  // gold trim lines
-  g.fillStyle = "#b58a2a";
-  for (let i = 0; i < s; i += 8) g.fillRect(i, 0, 1, s);
-}, 64);
-wallTex.repeat.set(7, 2);
-
-const roomBox = new THREE.Mesh(
+const room = new THREE.Mesh(
   new THREE.BoxGeometry(ROOM_W, ROOM_H, ROOM_D),
-  new THREE.MeshStandardMaterial({
-    map: wallTex,
-    roughness: 0.94,
-    metalness: 0.02,
-    side: THREE.BackSide
-  })
+  new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.92, metalness: 0.03, side: THREE.BackSide })
 );
-roomBox.position.y = ROOM_H / 2;
-roomBox.receiveShadow = true;
-scene.add(roomBox);
-
-// ceiling “tiles”
-const ceilingTex = makePixelTexture((g, s) => {
-  g.fillStyle = "#1b1622";
-  g.fillRect(0, 0, s, s);
-  for (let y = 0; y < s; y += 8) {
-    for (let x = 0; x < s; x += 8) {
-      g.fillStyle = ((x + y) % 16 === 0) ? "#231c2c" : "#1a1424";
-      g.fillRect(x, y, 8, 8);
-    }
-  }
-  // subtle light strips
-  g.fillStyle = "rgba(255,242,210,0.10)";
-  for (let i = 0; i < s; i += 16) g.fillRect(0, i, s, 1);
-}, 64);
-ceilingTex.repeat.set(8, 8);
-
-const ceiling = new THREE.Mesh(
-  new THREE.PlaneGeometry(ROOM_W - 2, ROOM_D - 2),
-  new THREE.MeshStandardMaterial({ map: ceilingTex, roughness: 0.95, metalness: 0 })
-);
-ceiling.rotation.x = Math.PI / 2;
-ceiling.position.set(0, ROOM_H - 0.25, 0);
-scene.add(ceiling);
-
-// carpet (real casino pattern)
-const carpetTex = makePixelTexture((g, s) => {
-  g.fillStyle = "#240b2c";
-  g.fillRect(0, 0, s, s);
-
-  for (let y = 0; y < s; y += 8) {
-    for (let x = 0; x < s; x += 8) {
-      const on = ((x / 8 + y / 8) % 2) === 0;
-      g.fillStyle = on ? "#3b0f49" : "#1a0820";
-      g.fillRect(x, y, 8, 8);
-
-      // sparkle
-      g.fillStyle = "rgba(255, 212, 43, 0.14)";
-      g.fillRect(x + 3, y + 3, 2, 2);
-    }
-  }
-
-  // swirls
-  g.fillStyle = "rgba(43, 247, 255, 0.10)";
-  for (let i = 0; i < s; i += 16) {
-    g.fillRect(i + 2, 0, 1, s);
-    g.fillRect(0, i + 6, s, 1);
-  }
-}, 64);
-carpetTex.repeat.set(12, 12);
+room.position.y = ROOM_H/2;
+room.receiveShadow = true;
+scene.add(room);
 
 const floor = new THREE.Mesh(
-  new THREE.PlaneGeometry(ROOM_W - 6, ROOM_D - 6),
-  new THREE.MeshStandardMaterial({ map: carpetTex, roughness: 0.98, metalness: 0 })
+  new THREE.PlaneGeometry(ROOM_W-8, ROOM_D-8),
+  new THREE.MeshStandardMaterial({ map: carpetTex, roughness: 0.98, metalness: 0.0 })
 );
-floor.rotation.x = -Math.PI / 2;
-floor.position.y = 0;
+floor.rotation.x = -Math.PI/2;
 floor.receiveShadow = true;
 scene.add(floor);
 
-// Columns (help “room” feel real)
-const colTex = makePixelTexture((g, s) => {
-  g.fillStyle = "#2a2633";
-  g.fillRect(0, 0, s, s);
-  for (let y = 0; y < s; y += 4) {
-    g.fillStyle = (y % 8 === 0) ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)";
-    g.fillRect(0, y, s, 1);
-  }
-  g.fillStyle = "#b58a2a";
-  g.fillRect(0, 0, s, 2);
-  g.fillRect(0, s - 2, s, 2);
-}, 64);
-colTex.repeat.set(1, 2);
-
-const colMat = new THREE.MeshStandardMaterial({ map: colTex, roughness: 0.9, metalness: 0.05 });
-
-function addColumn(x, z) {
-  const c = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 1.1, ROOM_H - 2, 10), colMat);
-  c.position.set(x, (ROOM_H - 2) / 2 + 1, z);
-  c.castShadow = c.receiveShadow = true;
-  scene.add(c);
-
-  const ring = new THREE.Mesh(
-    new THREE.TorusGeometry(1.15, 0.10, 10, 18),
-    new THREE.MeshStandardMaterial({ color: 0xff2bd6, emissive: 0xff2bd6, emissiveIntensity: 1.0, roughness: 0.25 })
-  );
-  ring.rotation.x = Math.PI / 2;
-  ring.position.set(x, ROOM_H - 3.0, z);
-  scene.add(ring);
-
-  const pl = new THREE.PointLight(0xff2bd6, 55, 16, 2);
-  pl.position.set(x, ROOM_H - 3.0, z);
-  scene.add(pl);
-}
-const edge = 52;
-for (let i = -3; i <= 3; i++) {
-  addColumn(-edge, i * 16);
-  addColumn(edge, i * 16);
-  addColumn(i * 16, -edge);
-  addColumn(i * 16, edge);
-}
-
-// Ceiling fixtures (visible)
-const lampMat = new THREE.MeshStandardMaterial({ color: 0x101018, roughness: 0.7, metalness: 0.2 });
-const bulbMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff2c6, emissiveIntensity: 1.25, roughness: 0.25 });
-
-function addCeilingLight(x, z) {
-  const fixture = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.6, 0.25, 10), lampMat);
-  fixture.position.set(x, ROOM_H - 1.0, z);
-  scene.add(fixture);
-
-  const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.35, 10, 10), bulbMat);
-  bulb.position.set(x, ROOM_H - 1.35, z);
-  scene.add(bulb);
-
-  const l = new THREE.PointLight(0xfff2c6, 135, 26, 2);
-  l.position.set(x, ROOM_H - 1.35, z);
-  scene.add(l);
-}
-for (let x = -24; x <= 24; x += 12) {
-  for (let z = -24; z <= 24; z += 12) addCeilingLight(x, z);
-}
-
-// Back wall neon sign
-const signTex = makePixelTexture((g, s) => {
-  g.fillStyle = "#0d0d14";
-  g.fillRect(0, 0, s, s);
-  g.fillStyle = "#ff2bd6";
-  g.fillRect(6, 18, s - 12, 10);
-  g.fillStyle = "#2bf7ff";
-  g.fillRect(10, 34, s - 20, 8);
-  g.fillStyle = "rgba(255,212,43,0.9)";
-  g.fillRect(12, 48, s - 24, 6);
-}, 64);
-
-const sign = new THREE.Mesh(
-  new THREE.BoxGeometry(16, 3.4, 0.5),
-  new THREE.MeshStandardMaterial({ map: signTex, emissive: 0xff2bd6, emissiveIntensity: 0.55, roughness: 0.4 })
+const ceiling = new THREE.Mesh(
+  new THREE.PlaneGeometry(ROOM_W-4, ROOM_D-4),
+  new THREE.MeshStandardMaterial({ color: 0x1a1523, roughness: 0.95, metalness: 0 })
 );
-sign.position.set(0, 7.2, -ROOM_D / 2 + 1.0);
-sign.castShadow = true;
-scene.add(sign);
-
-const signLight = new THREE.PointLight(0xff2bd6, 135, 45, 2);
-signLight.position.set(0, 7.2, -ROOM_D / 2 + 3.0);
-scene.add(signLight);
+ceiling.rotation.x = Math.PI/2;
+ceiling.position.set(0, ROOM_H-0.3, 0);
+scene.add(ceiling);
 
 // ======================
-// Name tags (Sprites) — pixel styled labels above games
+// Decor: chandeliers, paintings, ropes, plants, bar
+// ======================
+function makePaintingTexture(seed = 1) {
+  return canvasTex((g,s)=>{
+    // abstract "famous painting" vibe (stylized, no copyrighted image)
+    g.fillStyle="#0b0b12"; g.fillRect(0,0,s,s);
+    const grad = g.createLinearGradient(0,0,s,s);
+    grad.addColorStop(0, "#ff2bd6");
+    grad.addColorStop(0.5, "#2bf7ff");
+    grad.addColorStop(1, "#ffd42b");
+    g.fillStyle = grad;
+    g.globalAlpha = 0.25;
+    g.fillRect(0,0,s,s);
+    g.globalAlpha = 1;
+
+    // brushy blocks
+    function rnd(n){ seed = (seed*1664525 + 1013904223) >>> 0; return (seed % n); }
+    for (let i=0;i<80;i++){
+      const x=rnd(s), y=rnd(s), w=20+rnd(120), h=10+rnd(80);
+      g.fillStyle = `rgba(${80+rnd(175)},${40+rnd(160)},${80+rnd(175)},${0.10+rnd(25)/120})`;
+      g.fillRect(x,y,w,h);
+    }
+
+    // bright subject blob
+    g.fillStyle="rgba(255,255,255,0.20)";
+    g.beginPath(); g.arc(s*0.52,s*0.46,s*0.22,0,Math.PI*2); g.fill();
+    g.fillStyle="rgba(0,0,0,0.25)";
+    g.beginPath(); g.arc(s*0.57,s*0.52,s*0.18,0,Math.PI*2); g.fill();
+  }, 256);
+}
+
+function addPainting(x, y, z, ry, labelText) {
+  const tex = makePaintingTexture((Math.random()*1000)|0);
+  const frame = new THREE.Mesh(
+    new THREE.BoxGeometry(4.2, 2.6, 0.15),
+    new THREE.MeshStandardMaterial({ map: tex, roughness: 0.65, metalness: 0.05 })
+  );
+  frame.position.set(x, y, z);
+  frame.rotation.y = ry;
+  frame.castShadow = true;
+  scene.add(frame);
+
+  // frame border
+  const border = new THREE.Mesh(
+    new THREE.BoxGeometry(4.35, 2.75, 0.18),
+    new THREE.MeshStandardMaterial({ color: 0x3a2a14, roughness: 0.85, metalness: 0.05 })
+  );
+  border.position.set(x, y, z);
+  border.rotation.y = ry;
+  scene.add(border);
+
+  const l = new THREE.SpotLight(0xfff2d2, 160, 10, Math.PI/7, 0.6, 1.0);
+  l.position.set(x + Math.sin(ry)*2.5, y+1.8, z + Math.cos(ry)*2.5);
+  l.target.position.set(x, y, z);
+  scene.add(l, l.target);
+
+  if (labelText) {
+    const tag = makeLabelSprite(labelText, "#ffffff", "rgba(0,0,0,0.6)", "#ffd42b");
+    tag.position.set(x, y-1.9, z);
+    tag.rotation.y = ry;
+    tag.scale.set(6.2, 1.6, 1);
+    scene.add(tag);
+  }
+}
+
+function addChandelier(x, z) {
+  const g = new THREE.Group();
+  g.position.set(x, ROOM_H - 2.8, z);
+  scene.add(g);
+
+  const metal = new THREE.MeshStandardMaterial({ color: 0x141018, roughness: 0.35, metalness: 0.75 });
+  const gold  = new THREE.MeshStandardMaterial({ color: 0xb58a2a, roughness: 0.25, metalness: 0.85 });
+
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 1.2, 12), metal);
+  stem.position.y = 0.8;
+  g.add(stem);
+
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.10, 12, 32), gold);
+  ring.rotation.x = Math.PI/2;
+  g.add(ring);
+
+  for (let i=0;i<10;i++){
+    const a = (i/10)*Math.PI*2;
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.12, 14, 14),
+      new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff2c6, emissiveIntensity: 1.4, roughness: 0.2 })
+    );
+    bulb.position.set(Math.cos(a)*1.2, -0.1, Math.sin(a)*1.2);
+    g.add(bulb);
+  }
+
+  const light = new THREE.PointLight(0xfff2c6, 520, 22, 2);
+  light.position.set(0, -0.15, 0);
+  g.add(light);
+
+  g.userData.spin = 0.25 + Math.random()*0.25;
+  return g;
+}
+
+function addPlant(x, z) {
+  const pot = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.5, 0.65, 0.55, 16),
+    new THREE.MeshStandardMaterial({ color: 0x2a1a12, roughness: 0.9, metalness: 0.05 })
+  );
+  pot.position.set(x, 0.28, z);
+  pot.castShadow = pot.receiveShadow = true;
+  scene.add(pot);
+
+  const leafMat = new THREE.MeshStandardMaterial({ color: 0x1a7a3f, roughness: 0.85, metalness: 0.02 });
+  for (let i=0;i<10;i++){
+    const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.12, 1.2, 10), leafMat);
+    leaf.position.set(x + (Math.random()-0.5)*0.35, 0.85 + Math.random()*0.35, z + (Math.random()-0.5)*0.35);
+    leaf.rotation.set(Math.random()*0.6, Math.random()*Math.PI*2, Math.random()*0.6);
+    leaf.castShadow = true;
+    scene.add(leaf);
+  }
+}
+
+function addRopeLine(x0,z0, x1,z1, posts=4, color=0x2bf7ff) {
+  const postMat = new THREE.MeshStandardMaterial({ color: 0x141018, roughness: 0.55, metalness: 0.6 });
+  const ropeMat = new THREE.MeshStandardMaterial({ color, roughness: 0.35, metalness: 0.2, emissive: color, emissiveIntensity: 0.2 });
+
+  const points = [];
+  for (let i=0;i<=posts;i++){
+    const t = i/posts;
+    const x = x0 + (x1-x0)*t;
+    const z = z0 + (z1-z0)*t;
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.10,1.0,12), postMat);
+    post.position.set(x, 0.5, z);
+    post.castShadow = true;
+    scene.add(post);
+
+    points.push(new THREE.Vector3(x, 0.82 - Math.sin(t*Math.PI)*0.12, z));
+  }
+  const curve = new THREE.CatmullRomCurve3(points);
+  const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 48, 0.03, 8, false), ropeMat);
+  tube.castShadow = true;
+  scene.add(tube);
+}
+
+function addBar(x, z) {
+  const bar = new THREE.Mesh(
+    new THREE.BoxGeometry(14, 1.4, 3.2),
+    new THREE.MeshStandardMaterial({ map: woodTex, roughness: 0.85, metalness: 0.05 })
+  );
+  bar.position.set(x, 0.7, z);
+  bar.castShadow = bar.receiveShadow = true;
+  scene.add(bar);
+
+  const neon = new THREE.Mesh(
+    new THREE.BoxGeometry(14, 0.25, 0.12),
+    new THREE.MeshStandardMaterial({ color: 0xff2bd6, emissive: 0xff2bd6, emissiveIntensity: 1.2, roughness: 0.2 })
+  );
+  neon.position.set(x, 1.35, z+1.62);
+  scene.add(neon);
+
+  const l = new THREE.PointLight(0xff2bd6, 160, 18, 2);
+  l.position.set(x, 2.6, z+1.5);
+  scene.add(l);
+}
+
+const chandeliers = [];
+for (let x=-24; x<=24; x+=12) for (let z=-24; z<=24; z+=12) chandeliers.push(addChandelier(x, z));
+
+addPainting(-ROOM_W/2 + 0.6, 7.5, -10, Math.PI/2, "MASTERPIECE");
+addPainting( ROOM_W/2 - 0.6, 7.5,  10,-Math.PI/2, "CLASSIC ART");
+addPainting(  10, 7.2, -ROOM_D/2 + 0.6, 0, "GOLDEN AGE");
+addPainting( -10, 7.2, -ROOM_D/2 + 0.6, 0, "ROYAL VELVET");
+
+addPlant(-40,  38);
+addPlant( 40,  38);
+addPlant(-40, -38);
+addPlant( 40, -38);
+
+addBar(0, 44);
+
+// velvet ropes guide you to games
+addRopeLine(-10, 20, -10, -20, 6, 0x2bf7ff);
+addRopeLine( 10, 20,  10, -20, 6, 0xff2bd6);
+
+// ======================
+// Labels (sprites)
 // ======================
 function makeLabelSprite(text, fg = "#ffffff", bg = "rgba(0,0,0,0.65)", accent = "#2bf7ff") {
   const c = document.createElement("canvas");
-  c.width = 256;
-  c.height = 64;
+  c.width = 512;
+  c.height = 128;
   const g = c.getContext("2d");
-  g.imageSmoothingEnabled = false;
 
   // background
   g.fillStyle = bg;
   g.fillRect(0, 0, c.width, c.height);
 
-  // accent border
+  // border
   g.fillStyle = accent;
-  g.fillRect(0, 0, c.width, 4);
-  g.fillRect(0, c.height - 4, c.width, 4);
-  g.fillRect(0, 0, 4, c.height);
-  g.fillRect(c.width - 4, 0, 4, c.height);
+  g.fillRect(0, 0, c.width, 6);
+  g.fillRect(0, c.height - 6, c.width, 6);
+  g.fillRect(0, 0, 6, c.height);
+  g.fillRect(c.width - 6, 0, 6, c.height);
 
-  // inner border
-  g.fillStyle = "rgba(255,255,255,0.12)";
-  g.fillRect(6, 6, c.width - 12, 2);
+  // inner shine
+  g.fillStyle = "rgba(255,255,255,0.10)";
+  g.fillRect(14, 16, c.width - 28, 4);
 
   // text
   g.fillStyle = fg;
-  g.font = "900 26px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  g.font = "1000 56px system-ui, -apple-system, Segoe UI, Roboto, Arial";
   g.textAlign = "center";
   g.textBaseline = "middle";
-  g.fillText(text, c.width / 2, c.height / 2);
+  g.fillText(text, c.width/2, c.height/2);
 
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
-  tex.minFilter = THREE.NearestFilter;
-  tex.magFilter = THREE.NearestFilter;
-  tex.generateMipmaps = false;
+  tex.anisotropy = 8;
 
-  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: true });
+  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
   const spr = new THREE.Sprite(mat);
-  spr.scale.set(9.5, 2.4, 1);
-  return spr;
-}
-
-function addLabelAbove(obj3d, text, accent) {
-  const spr = makeLabelSprite(text, "#ffffff", "rgba(0,0,0,0.62)", accent);
-  spr.position.set(0, 6.2, 0);
-  obj3d.add(spr);
+  spr.scale.set(10, 2.5, 1);
   return spr;
 }
 
 // ======================
-// Smooth layout plan (readable zones)
-// - Center aisle (spawn)
-// - Left zone: Roulette (iconic wheel + ring)
-// - Right zone: Slots row (big screens + symbols)
-// - Back zone: Blackjack table (felt markings)
+// Layout (smooth)
 // ======================
 const LAYOUT = {
-  spawn: new THREE.Vector3(0, 1.75, 32),
+  spawn: new THREE.Vector3(0, 1.75, 34),
   roulette: new THREE.Vector3(-28, 0, 0),
-  slotsRowZ: 0,
-  slotsStartX: 8,
-  slotsCount: 7,
-  slotsSpacing: 4.0,
-  blackjack: new THREE.Vector3(0, 0, -30)
+  slotsRow: new THREE.Vector3(18, 0, 0),
+  blackjack: new THREE.Vector3(0, 0, -30),
+  danceFloor: new THREE.Vector3(-10, 0, 34),
 };
 
-// Decorative aisle runner (helps navigation)
-const aisleTex = makePixelTexture((g, s) => {
-  g.fillStyle = "#0f0a16";
-  g.fillRect(0, 0, s, s);
-  g.fillStyle = "rgba(43,247,255,0.25)";
-  for (let y = 0; y < s; y += 8) g.fillRect(s/2 - 1, y, 2, 4);
-  g.fillStyle = "rgba(255,43,214,0.18)";
-  g.fillRect(2, 2, s - 4, 2);
-  g.fillRect(2, s - 4, s - 4, 2);
-}, 64);
-aisleTex.repeat.set(2, 16);
-
 const aisle = new THREE.Mesh(
-  new THREE.PlaneGeometry(12, 96),
-  new THREE.MeshStandardMaterial({ map: aisleTex, roughness: 0.98, metalness: 0 })
+  new THREE.PlaneGeometry(14, 100),
+  new THREE.MeshStandardMaterial({ color: 0x0b0912, roughness: 0.9, metalness: 0.05 })
 );
-aisle.rotation.x = -Math.PI / 2;
-aisle.position.set(0, 0.005, 0);
+aisle.rotation.x = -Math.PI/2;
+aisle.position.y = 0.002;
 aisle.receiveShadow = true;
 scene.add(aisle);
 
+// dance floor glow tiles
+const dance = new THREE.Mesh(
+  new THREE.PlaneGeometry(18, 18),
+  new THREE.MeshStandardMaterial({ color: 0x0f0b18, roughness: 0.35, metalness: 0.10, emissive: 0x2bf7ff, emissiveIntensity: 0.07 })
+);
+dance.rotation.x = -Math.PI/2;
+dance.position.set(LAYOUT.danceFloor.x, 0.004, LAYOUT.danceFloor.z);
+dance.receiveShadow = true;
+scene.add(dance);
+
+const danceLight = new THREE.PointLight(0x2bf7ff, 200, 28, 2);
+danceLight.position.set(LAYOUT.danceFloor.x, 6.0, LAYOUT.danceFloor.z);
+scene.add(danceLight);
+
 // ======================
-// Player + Controls (WASD + mouse look)
+// PLAYER controls (WASD + mouse look)
 // ======================
-let locked = false;
 let started = false;
+let locked = false;
 
 const keys = { w:false, a:false, s:false, d:false, shift:false };
 
@@ -608,6 +659,7 @@ document.addEventListener("keydown", (e) => {
   if (e.code === "KeyS") keys.s = true;
   if (e.code === "KeyD") keys.d = true;
   if (e.code === "ShiftLeft" || e.code === "ShiftRight") keys.shift = true;
+  if (e.code === "Escape") closeAllUIs();
 });
 document.addEventListener("keyup", (e) => {
   if (e.code === "KeyW") keys.w = false;
@@ -622,10 +674,9 @@ document.addEventListener("pointerlockchange", () => {
 });
 
 let yaw = 0, pitch = 0;
-const pitchLimit = Math.PI/2 - 0.07;
-
-// Higher sensitivity, not crazy
-const MOUSE_SENS = 0.0036;
+const pitchLimit = Math.PI/2 - 0.08;
+// a bit higher than default, but controllable
+const MOUSE_SENS = 0.0037;
 
 document.addEventListener("mousemove", (e) => {
   if (!locked) return;
@@ -637,12 +688,12 @@ document.addEventListener("mousemove", (e) => {
 
 const player = {
   pos: LAYOUT.spawn.clone(),
-  vel: new THREE.Vector3(0, 0, 0),
+  vel: new THREE.Vector3(),
   eye: 1.75,
-  walk: 4.8,
-  sprint: 7.6,
-  accel: 22.0,
-  friction: 14.0
+  walk: 5.0,
+  sprint: 7.8,
+  accel: 26,
+  friction: 16
 };
 camera.position.copy(player.pos);
 
@@ -651,7 +702,11 @@ function approach(cur, target, delta) {
   return Math.max(cur - delta, target);
 }
 
+function anyUIOpen() { return UI.state !== "none"; }
+
 function updateMovement(dt) {
+  if (!started || anyUIOpen()) return;
+
   const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0,1,0), yaw);
   const right   = new THREE.Vector3(1, 0,  0).applyAxisAngle(new THREE.Vector3(0,1,0), yaw);
 
@@ -668,7 +723,7 @@ function updateMovement(dt) {
     wish.normalize();
   }
 
-  const speed = (keys.shift ? player.sprint : player.walk);
+  const speed = keys.shift ? player.sprint : player.walk;
   const targetVX = wish.x * speed;
   const targetVZ = wish.z * speed;
 
@@ -683,60 +738,40 @@ function updateMovement(dt) {
   player.pos.x += player.vel.x * dt;
   player.pos.z += player.vel.z * dt;
 
-  // Clamp inside room
-  const boundX = ROOM_W/2 - 2.5;
-  const boundZ = ROOM_D/2 - 2.5;
-  player.pos.x = THREE.MathUtils.clamp(player.pos.x, -boundX, boundX);
-  player.pos.z = THREE.MathUtils.clamp(player.pos.z, -boundZ, boundZ);
+  // keep inside room
+  const bx = ROOM_W/2 - 3;
+  const bz = ROOM_D/2 - 3;
+  player.pos.x = THREE.MathUtils.clamp(player.pos.x, -bx, bx);
+  player.pos.z = THREE.MathUtils.clamp(player.pos.z, -bz, bz);
 
   camera.position.set(player.pos.x, player.eye, player.pos.z);
+
+  // mild FOV sprint
+  const moving = player.vel.lengthSq() > 0.3;
+  const desiredFov = (keys.shift && moving) ? 76 : 70;
+  camera.fov = approach(camera.fov, desiredFov, 14 * dt);
+  camera.updateProjectionMatrix();
 }
 
-// Start experience (audio + pointer lock)
 overlay.addEventListener("click", () => {
   if (!started) {
     started = true;
     overlay.style.display = "none";
-    if (!SND.ambience.playing()) SND.ambience.play();
+    SND.roomAir.play();
+    SND.crowd.play();
   }
   renderer.domElement.requestPointerLock?.();
 });
 
 // ======================
-// Economy (shared balance) + HUD (small in-corner)
-// ======================
-const Economy = {
-  balance: 1000,
-  clampBet(b) { return Math.max(10, Math.min(500, b|0)); },
-  canBet(b) { return this.balance >= b; },
-  bet(b) { this.balance -= b; },
-  pay(x) { this.balance += x; }
-};
-
-const hud = document.createElement("div");
-hud.className = "hint";
-hud.style.left = "auto";
-hud.style.right = "14px";
-hud.style.maxWidth = "240px";
-hud.innerHTML = `<div><b>BALANCE</b></div><div id="hudBal">$1000</div>`;
-document.body.appendChild(hud);
-const hudBal = document.getElementById("hudBal");
-function updateHUD() { hudBal.textContent = `$${Economy.balance}`; }
-updateHUD();
-
-// ======================
-// CANNON — physics (roulette ball)
+// CANNON (only used lightly)
 // ======================
 const world = new CANNON.World();
 world.gravity.set(0, -9.82, 0);
-world.broadphase = new CANNON.NaiveBroadphase();
 world.solver.iterations = 10;
 
 const mat = new CANNON.Material("m");
-world.defaultContactMaterial = new CANNON.ContactMaterial(mat, mat, {
-  friction: 0.12,
-  restitution: 0.60
-});
+world.defaultContactMaterial = new CANNON.ContactMaterial(mat, mat, { friction: 0.10, restitution: 0.6 });
 
 const groundBody = new CANNON.Body({ mass: 0, material: mat });
 groundBody.addShape(new CANNON.Plane());
@@ -744,712 +779,395 @@ groundBody.quaternion.setFromEuler(-Math.PI/2, 0, 0);
 world.addBody(groundBody);
 
 // ======================
-// ROULETTE — clearer visuals + UI betting
+// NPC Crowd (dancers + gamblers) — stylized low-poly
 // ======================
-const rouletteGroup = new THREE.Group();
-rouletteGroup.position.copy(LAYOUT.roulette);
-scene.add(rouletteGroup);
+const npcs = [];
+function makePerson(style = "dancer") {
+  const g = new THREE.Group();
 
-// Table base (wood)
-const woodTex = makePixelTexture((g, s) => {
-  g.fillStyle = "#3a2416";
-  g.fillRect(0,0,s,s);
-  for (let y=0; y<s; y+=2){
-    const c = (y%4===0) ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.05)";
-    g.fillStyle = c;
-    g.fillRect(0,y,s,1);
+  // body materials
+  const skin = new THREE.MeshStandardMaterial({ color: 0xf2c9a0, roughness: 0.65, metalness: 0.02 });
+  const suit = new THREE.MeshStandardMaterial({ color: style==="dancer" ? 0x2bf7ff : 0x141018, roughness: 0.55, metalness: 0.08 });
+  const cloth = new THREE.MeshStandardMaterial({ color: style==="dancer" ? 0xff2bd6 : 0xffd42b, roughness: 0.70, metalness: 0.02 });
+
+  // head
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 14, 14), skin);
+  head.position.y = 1.62;
+  head.castShadow = true;
+  g.add(head);
+
+  // torso
+  const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.20, 0.55, 8, 14), cloth);
+  torso.position.y = 1.15;
+  torso.castShadow = true;
+  g.add(torso);
+
+  // legs
+  const leg1 = new THREE.Mesh(new THREE.CapsuleGeometry(0.10, 0.55, 6, 12), suit);
+  const leg2 = leg1.clone();
+  leg1.position.set(-0.12, 0.45, 0);
+  leg2.position.set( 0.12, 0.45, 0);
+  leg1.castShadow = leg2.castShadow = true;
+  g.add(leg1, leg2);
+
+  // arms
+  const arm1 = new THREE.Mesh(new THREE.CapsuleGeometry(0.08, 0.45, 6, 12), suit);
+  const arm2 = arm1.clone();
+  arm1.position.set(-0.32, 1.15, 0);
+  arm2.position.set( 0.32, 1.15, 0);
+  arm1.castShadow = arm2.castShadow = true;
+  g.add(arm1, arm2);
+
+  g.userData = { style, arm1, arm2, leg1, leg2, seed: Math.random()*1000, t: 0 };
+  return g;
+}
+
+function spawnDancers(centerX, centerZ, count = 10) {
+  for (let i=0;i<count;i++){
+    const p = makePerson("dancer");
+    const r = 4 + Math.random()*4;
+    const a = Math.random()*Math.PI*2;
+    p.position.set(centerX + Math.cos(a)*r, 0, centerZ + Math.sin(a)*r);
+    p.rotation.y = Math.random()*Math.PI*2;
+    scene.add(p);
+    npcs.push(p);
   }
-  g.fillStyle = "rgba(181,138,42,0.6)";
-  g.fillRect(0, 2, s, 2);
-  g.fillRect(0, s-4, s, 2);
-}, 64);
-woodTex.repeat.set(2, 2);
+}
 
-const rouletteBase = new THREE.Mesh(
-  new THREE.CylinderGeometry(5.3, 5.6, 0.9, 24),
-  new THREE.MeshStandardMaterial({ map: woodTex, roughness: 0.9, metalness: 0.04 })
+function spawnGamblers(x0,z0, x1,z1, count=10) {
+  for (let i=0;i<count;i++){
+    const p = makePerson("gambler");
+    p.position.set(
+      x0 + (x1-x0)*Math.random(),
+      0,
+      z0 + (z1-z0)*Math.random()
+    );
+    p.rotation.y = Math.random()*Math.PI*2;
+    scene.add(p);
+    npcs.push(p);
+  }
+}
+
+spawnDancers(LAYOUT.danceFloor.x, LAYOUT.danceFloor.z, 12);
+spawnGamblers(-35, -10, -18,  10, 8);  // near roulette
+spawnGamblers( 14, -10,  34,  10, 10); // near slots
+spawnGamblers(-6, -40,   6, -24, 8);   // near blackjack
+
+// ======================
+// GAMES: visuals + interactions + UIs
+// ======================
+
+const interactables = [];
+function addInteractable(mesh, type, ref) {
+  mesh.userData.interactive = true;
+  mesh.userData.type = type;
+  mesh.userData.ref = ref;
+  interactables.push(mesh);
+}
+
+function addGameLabel(group, text, accent) {
+  const label = makeLabelSprite(text, "#ffffff", "rgba(0,0,0,0.62)", accent);
+  label.position.set(0, 6.4, 0);
+  group.add(label);
+}
+
+// --------------------------------------
+// ROULETTE (European 0–36, standard order)
+// --------------------------------------
+const ROULETTE_ORDER = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
+const RED_NUMBERS = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]); // European standard
+
+function rouletteColor(n) {
+  if (n === 0) return "GREEN";
+  return RED_NUMBERS.has(n) ? "RED" : "BLACK";
+}
+
+const roulette = {
+  group: new THREE.Group(),
+  spinning: false,
+  bet: 25,
+  betKind: "RED",   // RED, BLACK, EVEN, ODD, LOW, HIGH, DOZEN1, DOZEN2, DOZEN3, STRAIGHT
+  straight: 17,
+  last: null,
+  settleT: 0,
+  win: 0,
+};
+
+roulette.group.position.copy(LAYOUT.roulette);
+scene.add(roulette.group);
+
+// base table
+const roulBase = new THREE.Mesh(
+  new THREE.CylinderGeometry(5.7, 6.0, 1.0, 32),
+  new THREE.MeshStandardMaterial({ map: woodTex, roughness: 0.88, metalness: 0.05 })
 );
-rouletteBase.position.y = 0.45;
-rouletteBase.castShadow = rouletteBase.receiveShadow = true;
-rouletteGroup.add(rouletteBase);
+roulBase.position.y = 0.5;
+roulBase.castShadow = roulBase.receiveShadow = true;
+roulette.group.add(roulBase);
 
-// Wheel top texture (readable red/black/green wedges)
-const wheelTex = makePixelTexture((g, s) => {
-  g.fillStyle = "#101018";
-  g.fillRect(0,0,s,s);
-
-  const cx = s/2, cy = s/2;
-  const wedges = 12;
-  for (let i=0; i<wedges; i++){
-    const a0 = (i / wedges) * Math.PI*2;
-    const a1 = ((i+1) / wedges) * Math.PI*2;
-    g.beginPath();
-    g.moveTo(cx, cy);
-    g.arc(cx, cy, s*0.45, a0, a1);
-    g.closePath();
-    if (i === 0) g.fillStyle = "#1aa85b";         // green
-    else g.fillStyle = (i%2===0) ? "#d12b2b" : "#1b1b1b"; // red/black
+// wheel
+const wheelTex = canvasTex((g,s)=>{
+  g.fillStyle="#0d0d14"; g.fillRect(0,0,s,s);
+  const cx=s/2, cy=s/2;
+  const wedges=37;
+  for (let i=0;i<wedges;i++){
+    const a0 = (i/wedges)*Math.PI*2;
+    const a1 = ((i+1)/wedges)*Math.PI*2;
+    const n = ROULETTE_ORDER[i];
+    g.beginPath(); g.moveTo(cx,cy); g.arc(cx,cy,s*0.47,a0,a1); g.closePath();
+    const col = rouletteColor(n);
+    g.fillStyle = col==="RED" ? "#c82424" : col==="BLACK" ? "#16161a" : "#1aa85b";
     g.fill();
 
-    // number tick
-    g.fillStyle = "rgba(255,255,255,0.8)";
-    const mid = (a0+a1)/2;
-    const tx = cx + Math.cos(mid)*s*0.34;
-    const ty = cy + Math.sin(mid)*s*0.34;
-    g.fillRect(tx|0, ty|0, 2, 2);
+    // number dot ring
+    const mid=(a0+a1)/2;
+    const tx=cx + Math.cos(mid)*s*0.38;
+    const ty=cy + Math.sin(mid)*s*0.38;
+    g.fillStyle="rgba(255,255,255,0.9)";
+    g.fillRect((tx|0), (ty|0), 2, 2);
   }
+  g.fillStyle="#2bf7ff"; g.fillRect(cx-3, cy-3, 6, 6);
+}, 512);
 
-  // center hub
-  g.fillStyle = "#2bf7ff";
-  g.fillRect(cx-2, cy-2, 4, 4);
-}, 128);
-
-const rouletteWheel = new THREE.Mesh(
-  new THREE.CylinderGeometry(4.1, 4.1, 0.34, 28),
-  new THREE.MeshStandardMaterial({ map: wheelTex, roughness: 0.4, metalness: 0.15 })
+const roulWheel = new THREE.Mesh(
+  new THREE.CylinderGeometry(4.4, 4.4, 0.38, 48),
+  new THREE.MeshStandardMaterial({ map: wheelTex, roughness: 0.45, metalness: 0.12 })
 );
-rouletteWheel.position.y = 1.05;
-rouletteWheel.castShadow = rouletteWheel.receiveShadow = true;
-rouletteGroup.add(rouletteWheel);
+roulWheel.position.y = 1.12;
+roulWheel.castShadow = roulWheel.receiveShadow = true;
+roulette.group.add(roulWheel);
 
-const rouletteRim = new THREE.Mesh(
-  new THREE.TorusGeometry(4.0, 0.12, 10, 20),
+const rim = new THREE.Mesh(
+  new THREE.TorusGeometry(4.35, 0.12, 14, 64),
   new THREE.MeshStandardMaterial({ color: 0x2bf7ff, emissive: 0x2bf7ff, emissiveIntensity: 0.9, roughness: 0.25 })
 );
-rouletteRim.rotation.x = Math.PI/2;
-rouletteRim.position.y = 1.25;
-rouletteGroup.add(rouletteRim);
+rim.rotation.x = Math.PI/2;
+rim.position.y = 1.32;
+roulette.group.add(rim);
 
-const roulLight = new THREE.PointLight(0x2bf7ff, 90, 26, 2);
-roulLight.position.set(rouletteGroup.position.x, 3.5, rouletteGroup.position.z);
+const roulLight = new THREE.PointLight(0x2bf7ff, 130, 26, 2);
+roulLight.position.set(roulette.group.position.x, 3.8, roulette.group.position.z);
 scene.add(roulLight);
 
-// Add label
-addLabelAbove(rouletteGroup, "ROULETTE", "#2bf7ff");
+addGameLabel(roulette.group, "ROULETTE", "#2bf7ff");
+addInteractable(roulWheel, "roulette", roulette);
 
-// Rail physics
-const rouletteCenter = new CANNON.Vec3(rouletteGroup.position.x, 1.25, rouletteGroup.position.z);
-const railOuter = 3.7;
-const railInner = 2.9;
-const railHeight = 0.28;
+// --------------------------------------
+// SLOTS (reel strips + paytable)
+// --------------------------------------
+const slots = {
+  group: new THREE.Group(),
+  bet: 10,
+  spinning: false,
+  reels: [0,0,0],
+  last: null,
+};
 
-function addRailSegment(radius, angle, length, thickness, y) {
-  const shape = new CANNON.Box(new CANNON.Vec3(length/2, railHeight/2, thickness/2));
-  const body = new CANNON.Body({ mass: 0, material: mat });
-  body.addShape(shape);
+slots.group.position.copy(LAYOUT.slotsRow);
+scene.add(slots.group);
 
-  const x = rouletteCenter.x + Math.cos(angle) * radius;
-  const z = rouletteCenter.z + Math.sin(angle) * radius;
-  body.position.set(x, y, z);
-  body.quaternion.setFromEuler(0, -angle, 0);
-  world.addBody(body);
-}
-const SEG = 40;
-for (let i = 0; i < SEG; i++) {
-  const a = (i / SEG) * Math.PI * 2;
-  addRailSegment(railOuter, a, 0.7, 0.14, 1.30);
-  addRailSegment(railInner, a, 0.7, 0.14, 1.30);
-}
-function inwardForce(body) {
-  const dx = body.position.x - rouletteCenter.x;
-  const dz = body.position.z - rouletteCenter.z;
-  const r = Math.sqrt(dx*dx + dz*dz) || 1;
-  const target = (railOuter + railInner) * 0.5;
-  const k = 6.0;
-  const diff = r - target;
-  body.applyForce(new CANNON.Vec3((-dx / r) * diff * k, 0, (-dz / r) * diff * k), body.position);
-}
+addGameLabel(slots.group, "SLOTS", "#ff2bd6");
 
-const ballRadius = 0.12;
-const ballBody = new CANNON.Body({
-  mass: 0.18,
-  material: mat,
-  linearDamping: 0.10,
-  angularDamping: 0.25
-});
-ballBody.addShape(new CANNON.Sphere(ballRadius));
-ballBody.position.set(rouletteCenter.x + railOuter - 0.28, 1.50, rouletteCenter.z);
-world.addBody(ballBody);
+// symbol set & reel strips (more realistic: not uniform odds)
+const SYMBOLS = [
+  { s:"7",   mult3: 30, mult2: 6 },
+  { s:"💎",  mult3: 15, mult2: 4 },
+  { s:"🔔",  mult3: 10, mult2: 3 },
+  { s:"🍒",  mult3: 6,  mult2: 2 },
+  { s:"🍋",  mult3: 5,  mult2: 2 },
+  { s:"🍇",  mult3: 4,  mult2: 1 },
+  { s:"⭐",  mult3: 12, mult2: 4 },
+];
 
-const ballMesh = new THREE.Mesh(
-  new THREE.SphereGeometry(ballRadius, 12, 12),
-  new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.12, metalness: 0.1 })
-);
-ballMesh.castShadow = true;
-scene.add(ballMesh);
-
-// Roulette “result” model (simple 12 wedges)
-const WEDGES = 12; // simplified readable roulette
-const wedgeColors = [];
-for (let i=0;i<WEDGES;i++){
-  if (i===0) wedgeColors.push("green");
-  else wedgeColors.push(i%2===0 ? "red" : "black");
-}
-function rouletteResultFromWheelAngle(angle) {
-  // map angle to wedge index
-  // angle is radians; normalize 0..2pi
-  let a = angle % (Math.PI*2);
-  if (a < 0) a += Math.PI*2;
-  const idx = Math.floor((a / (Math.PI*2)) * WEDGES) % WEDGES;
-  return idx;
-}
-
-function spinRoulettePhysics() {
-  ballBody.position.set(rouletteCenter.x + railOuter - 0.28, 1.50, rouletteCenter.z);
-  ballBody.velocity.set(0, 0, 0);
-  ballBody.angularVelocity.set(0, 0, 0);
-  ballBody.applyImpulse(new CANNON.Vec3(0.0, 0.20, 3.2), ballBody.position);
-  playRoulette();
-  playChip();
-}
-
-// ======================
-// SLOTS — clearer machines + UI (playable)
-// ======================
-const slots = [];
-const coinParticles = [];
-
-const coinGeo = new THREE.SphereGeometry(0.06, 8, 8);
-const coinMat = new THREE.MeshStandardMaterial({
-  color: 0xffd42b,
-  emissive: 0xffd42b,
-  emissiveIntensity: 0.9,
-  roughness: 0.35
-});
-function spawnCoins(x, y, z) {
-  for (let i = 0; i < 22; i++) {
-    const m = new THREE.Mesh(coinGeo, coinMat);
-    m.position.set(x, y, z);
-    m.userData.v = new THREE.Vector3(
-      (Math.random() - 0.5) * 3.0,
-      2.4 + Math.random() * 2.4,
-      (Math.random() - 0.5) * 1.8
-    );
-    m.userData.life = 0.9 + Math.random() * 0.7;
-    m.castShadow = true;
-    coinParticles.push(m);
-    scene.add(m);
+function makeStrip() {
+  // weighted strip: common symbols repeat more
+  const strip = [];
+  const pushN = (sym, n) => { for (let i=0;i<n;i++) strip.push(sym); };
+  pushN("🍇", 10);
+  pushN("🍋", 10);
+  pushN("🍒", 9);
+  pushN("🔔", 6);
+  pushN("⭐", 5);
+  pushN("💎", 3);
+  pushN("7",  2);
+  // shuffle
+  for (let i=strip.length-1;i>0;i--){
+    const j = (Math.random()*(i+1))|0;
+    [strip[i], strip[j]] = [strip[j], strip[i]];
   }
+  return strip;
 }
+const REEL_STRIPS = [makeStrip(), makeStrip(), makeStrip()];
 
-const slotBodyTex = makePixelTexture((g,s)=>{
-  g.fillStyle="#13131c"; g.fillRect(0,0,s,s);
-  for (let y=0;y<s;y+=8){
-    g.fillStyle = (y%16===0) ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.10)";
-    g.fillRect(0,y,s,1);
-  }
-  // neon edge blocks
-  g.fillStyle="#2bf7ff"; g.fillRect(0,0,4,s);
-  g.fillStyle="#ff2bd6"; g.fillRect(s-4,0,4,s);
-},64);
-slotBodyTex.repeat.set(1,1);
+function symInfo(sym) { return SYMBOLS.find(x=>x.s===sym); }
 
-function makeSlotScreenTexture(symbolsText="🍒 🔔 7️⃣") {
-  return makePixelTexture((g, s) => {
-    g.fillStyle = "#0b0b12";
-    g.fillRect(0,0,s,s);
-
-    // frame
-    g.fillStyle = "rgba(43,247,255,0.35)";
-    g.fillRect(0, 0, s, 3);
-    g.fillRect(0, s-3, s, 3);
-
-    // slots reels blocks
-    const w = Math.floor(s/3);
-    for (let i=0;i<3;i++){
-      g.fillStyle = (i%2===0) ? "#1a1024" : "#140c1c";
-      g.fillRect(i*w+2, 14, w-4, s-28);
-      g.fillStyle="rgba(255,255,255,0.08)";
-      g.fillRect(i*w+4, 16, w-8, 2);
-    }
-
-    // big text (emoji)
-    g.fillStyle = "#ffffff";
-    g.font = "900 22px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-    g.textAlign = "center";
-    g.textBaseline = "middle";
-    g.fillText(symbolsText, s/2, s/2);
-  }, 64);
-}
-
-function createSlotMachine(x, z) {
+// visuals: 3 machines as one readable bank
+function makeSlotMachineVisual(x) {
   const g = new THREE.Group();
-  g.position.set(x, 0, z);
-  scene.add(g);
+  g.position.set(x, 0, 0);
+  slots.group.add(g);
 
   const body = new THREE.Mesh(
-    new THREE.BoxGeometry(2.8, 3.6, 1.8),
-    new THREE.MeshStandardMaterial({ map: slotBodyTex, roughness: 0.6, metalness: 0.15 })
+    new THREE.BoxGeometry(3.0, 3.8, 2.0),
+    new THREE.MeshStandardMaterial({ color: 0x141018, roughness: 0.55, metalness: 0.15 })
   );
-  body.position.y = 1.8;
+  body.position.y = 1.9;
   body.castShadow = body.receiveShadow = true;
   g.add(body);
 
-  const screenTex = makeSlotScreenTexture("🍒 🔔 7️⃣");
+  // screen texture updated when spinning
+  const screenCanvas = document.createElement("canvas");
+  screenCanvas.width = 512; screenCanvas.height = 256;
+  const sg = screenCanvas.getContext("2d");
+  const screenTex = new THREE.CanvasTexture(screenCanvas);
+  screenTex.colorSpace = THREE.SRGBColorSpace;
+  screenTex.anisotropy = 8;
+
   const screenMat = new THREE.MeshStandardMaterial({
     map: screenTex,
     emissive: 0xff2bd6,
-    emissiveIntensity: 0.30,
-    roughness: 0.4
+    emissiveIntensity: 0.18,
+    roughness: 0.45,
+    metalness: 0.05
   });
-  const screen = new THREE.Mesh(new THREE.PlaneGeometry(1.9, 1.2), screenMat);
-  screen.position.set(0, 2.45, 0.92);
+
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 1.1), screenMat);
+  screen.position.set(0, 2.55, 1.02);
   g.add(screen);
 
-  const trimMat = new THREE.MeshStandardMaterial({
-    color: 0x2bf7ff,
-    emissive: 0x2bf7ff,
-    emissiveIntensity: 0.8,
-    roughness: 0.25
-  });
-  const trim = new THREE.Mesh(new THREE.TorusGeometry(1.15, 0.08, 10, 18), trimMat);
-  trim.rotation.x = Math.PI/2;
-  trim.position.set(0, 2.45, 0.93);
-  g.add(trim);
-
-  const btnMat = new THREE.MeshStandardMaterial({ color: 0x0f0f14, emissive: 0xffd42b, emissiveIntensity: 0.20, roughness: 0.45 });
-  const btn = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.10, 14), btnMat);
+  // button
+  const btn = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.28, 0.28, 0.12, 20),
+    new THREE.MeshStandardMaterial({ color: 0x0f0f14, emissive: 0xffd42b, emissiveIntensity: 0.18, roughness: 0.45 })
+  );
   btn.rotation.x = Math.PI/2;
-  btn.position.set(0.95, 1.15, 0.92);
+  btn.position.set(1.05, 1.2, 1.05);
   g.add(btn);
 
-  const glow = new THREE.PointLight(0xff2bd6, 85, 20, 2);
-  glow.position.set(x, 3.4, z);
+  const glow = new THREE.PointLight(0xff2bd6, 95, 20, 2);
+  glow.position.set(slots.group.position.x + x, 3.4, slots.group.position.z);
   scene.add(glow);
 
-  // label on the whole row (only one label for row; we’ll add later)
-  return {
-    group: g,
-    button: btn,
-    screenMat,
-    trimMat,
-    btnMat,
-    glow,
-    screenTex,
-    spinT: 0,
-    winT: 0
-  };
-}
+  addInteractable(btn, "slots", { btn, screenTex, sg, glow, screenMat, group: g });
 
-// Slot row layout
-const slotRowGroup = new THREE.Group();
-slotRowGroup.position.set(0, 0, LAYOUT.slotsRowZ);
-scene.add(slotRowGroup);
+  function drawReels(a,b,c, msg="") {
+    sg.clearRect(0,0,512,256);
+    // frame
+    sg.fillStyle = "rgba(0,0,0,0.75)";
+    sg.fillRect(0,0,512,256);
 
-for (let i = 0; i < LAYOUT.slotsCount; i++) {
-  const x = LAYOUT.slotsStartX + i * LAYOUT.slotsSpacing;
-  const s = createSlotMachine(x, 0);
-  slotRowGroup.add(s.group);
-  slots.push(s);
-}
-// Put the row on the RIGHT side
-slotRowGroup.position.x = 10;
-slotRowGroup.position.z = 0;
-slotRowGroup.rotation.y = -0.10;
-addLabelAbove(slotRowGroup, "SLOTS", "#ff2bd6");
+    const grad = sg.createLinearGradient(0,0,512,0);
+    grad.addColorStop(0, "rgba(255,43,214,0.25)");
+    grad.addColorStop(1, "rgba(43,247,255,0.18)");
+    sg.fillStyle = grad;
+    sg.fillRect(0,0,512,18);
 
-// Slots UI (playable)
-const slotUI = document.createElement("div");
-slotUI.className = "uiWrap";
-slotUI.innerHTML = `
-  <div class="uiCard">
-    <div class="uiHead">
-      <div class="uiTitle">SLOTS</div>
-      <button class="uiClose" id="slotClose">Close</button>
-    </div>
-    <div class="uiBody">
-      <div class="uiRow">
-        <div class="pill"><div><b>Balance</b></div><div id="slotBal">$0</div></div>
-        <div class="pill"><div><b>Bet</b></div><div id="slotBet">$25</div></div>
-        <div class="pill"><div><b>Payout</b></div><div id="slotPay">—</div></div>
-      </div>
-
-      <div class="pill" style="margin-top:12px; font-size:26px; letter-spacing:2px;">
-        <div><b>Reels</b></div>
-        <div id="slotReels">— — —</div>
-      </div>
-
-      <div class="uiBtns">
-        <button class="btn" id="slotDown">Bet -</button>
-        <button class="btn" id="slotUp">Bet +</button>
-        <button class="btn btnPrimary" id="slotSpin">SPIN</button>
-      </div>
-
-      <div class="msg" id="slotMsg">Click a slot machine to play.</div>
-      <div class="msg" style="opacity:.8;">
-        3-match pays big • 2-match pays half • Symbols: 🍒 🔔 🍋 💎 7️⃣
-      </div>
-    </div>
-  </div>
-`;
-document.body.appendChild(slotUI);
-
-let slotState = { open:false, bet:25, activeSlot:null, spinning:false };
-const slotSymbols = ["🍒","🔔","🍋","💎","7️⃣"];
-const slotPayout = { "🍒": 2, "🔔": 4, "🍋": 3, "💎": 8, "7️⃣": 15 };
-
-function slotOpen(slotObj){
-  slotState.open = true;
-  slotState.activeSlot = slotObj;
-  slotState.spinning = false;
-  slotUI.style.display = "flex";
-  slotRefresh("Ready. Set bet and SPIN.");
-}
-function slotClose(){
-  slotState.open = false;
-  slotState.activeSlot = null;
-  slotState.spinning = false;
-  slotUI.style.display = "none";
-}
-document.getElementById("slotClose").onclick = slotClose;
-
-function slotRefresh(msg){
-  document.getElementById("slotBal").textContent = `$${Economy.balance}`;
-  document.getElementById("slotBet").textContent = `$${slotState.bet}`;
-  if (msg) document.getElementById("slotMsg").textContent = msg;
-  updateHUD();
-}
-
-document.getElementById("slotUp").onclick = () => {
-  if (slotState.spinning) return;
-  slotState.bet = Economy.clampBet(slotState.bet + 10);
-  playChip();
-  slotRefresh();
-};
-document.getElementById("slotDown").onclick = () => {
-  if (slotState.spinning) return;
-  slotState.bet = Economy.clampBet(slotState.bet - 10);
-  playChip();
-  slotRefresh();
-};
-
-function setSlotScreen(slotObj, symbolsArr) {
-  const txt = symbolsArr.join(" ");
-  // rebuild texture for crisp pixel text
-  const tex = makeSlotScreenTexture(txt);
-  slotObj.screenTex.dispose?.();
-  slotObj.screenTex = tex;
-  slotObj.screenMat.map = tex;
-  slotObj.screenMat.needsUpdate = true;
-}
-
-document.getElementById("slotSpin").onclick = () => {
-  if (!slotState.activeSlot) return slotRefresh("Click a machine first.");
-  if (slotState.spinning) return;
-
-  const b = slotState.bet;
-  if (!Economy.canBet(b)) return slotRefresh("Not enough balance.");
-  Economy.bet(b);
-  updateHUD();
-  playSlotSpin();
-  playChip();
-
-  slotState.spinning = true;
-
-  // “spin animation” (fake reel updates)
-  let ticks = 14;
-  const rollTimer = setInterval(() => {
-    const temp = [
-      slotSymbols[(Math.random()*slotSymbols.length)|0],
-      slotSymbols[(Math.random()*slotSymbols.length)|0],
-      slotSymbols[(Math.random()*slotSymbols.length)|0]
-    ];
-    document.getElementById("slotReels").textContent = temp.join(" ");
-    setSlotScreen(slotState.activeSlot, temp);
-
-    // glow while spinning
-    slotState.activeSlot.screenMat.emissiveIntensity = 0.55;
-    slotState.activeSlot.trimMat.emissiveIntensity = 1.2;
-    slotState.activeSlot.glow.intensity = 130;
-
-    ticks--;
-    if (ticks <= 0) {
-      clearInterval(rollTimer);
-
-      const r = [
-        slotSymbols[(Math.random()*slotSymbols.length)|0],
-        slotSymbols[(Math.random()*slotSymbols.length)|0],
-        slotSymbols[(Math.random()*slotSymbols.length)|0]
-      ];
-      document.getElementById("slotReels").textContent = r.join(" ");
-      setSlotScreen(slotState.activeSlot, r);
-
-      let win = 0;
-      let payText = "—";
-      if (r[0] === r[1] && r[1] === r[2]) {
-        win = b * slotPayout[r[0]];
-        payText = `${slotPayout[r[0]]}x`;
-      } else if (r[0] === r[1] || r[1] === r[2]) {
-        const sym = r[1];
-        win = Math.floor(b * (slotPayout[sym] / 2));
-        payText = `${(slotPayout[sym]/2).toFixed(1)}x`;
-      }
-
-      document.getElementById("slotPay").textContent = payText;
-
-      if (win > 0) {
-        Economy.pay(win);
-        playWin();
-        const p = slotState.activeSlot.group.getWorldPosition(new THREE.Vector3());
-        spawnCoins(p.x, 2.2, p.z);
-        slotState.activeSlot.winT = 1.0;
-        slotRefresh(`WIN! +$${win}`);
-      } else {
-        slotRefresh("No win. Spin again.");
-      }
-
-      // settle visuals
-      slotState.activeSlot.screenMat.emissiveIntensity = 0.30;
-      slotState.activeSlot.trimMat.emissiveIntensity = 0.85;
-      slotState.activeSlot.glow.intensity = 85;
-
-      slotState.spinning = false;
+    // reel windows
+    sg.fillStyle="rgba(255,255,255,0.08)";
+    for (let i=0;i<3;i++){
+      sg.fillRect(40 + i*155, 60, 132, 120);
+      sg.strokeStyle="rgba(255,255,255,0.18)";
+      sg.lineWidth=3;
+      sg.strokeRect(40 + i*155, 60, 132, 120);
     }
-  }, 70);
-};
 
-// ======================
-// BLACKJACK — clearer table markings + playable UI
-// ======================
-const bjTex = makePixelTexture((g, s) => {
-  g.fillStyle = "#0e6b3a";
-  g.fillRect(0,0,s,s);
+    // big symbols
+    sg.fillStyle="#fff";
+    sg.font="1000 90px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+    sg.textAlign="center";
+    sg.textBaseline="middle";
+    sg.fillText(a, 106, 120);
+    sg.fillText(b, 261, 120);
+    sg.fillText(c, 416, 120);
 
-  // “felt” speckle
-  g.fillStyle = "rgba(0,0,0,0.12)";
-  for (let i=0;i<220;i++){
-    g.fillRect((Math.random()*s)|0, (Math.random()*s)|0, 1, 1);
+    // message line
+    sg.fillStyle="rgba(255,255,255,0.9)";
+    sg.font="900 26px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+    sg.textAlign="left";
+    sg.fillText(msg, 24, 230);
+
+    screenTex.needsUpdate = true;
   }
 
-  // betting arc + boxes
-  g.strokeStyle = "rgba(255,255,255,0.35)";
-  g.lineWidth = 2;
-  g.beginPath();
-  g.arc(s/2, s*0.65, s*0.32, Math.PI*1.05, Math.PI*1.95);
-  g.stroke();
+  drawReels("🍒","🔔","7","CLICK SPIN");
+  return { drawReels, btn, screenTex, sg, glow, screenMat, group: g };
+}
 
-  g.fillStyle = "rgba(0,0,0,0.20)";
-  for (let i=0;i<3;i++){
-    g.fillRect(12 + i*18, 10, 14, 10);
-    g.fillRect(s-26 - i*18, 10, 14, 10);
-  }
+const slotVisuals = [
+  makeSlotMachineVisual(-4.2),
+  makeSlotMachineVisual( 0.0),
+  makeSlotMachineVisual( 4.2)
+];
 
-  // label
-  g.fillStyle = "rgba(255,212,43,0.85)";
-  g.fillRect(10, s-18, s-20, 6);
-}, 64);
-
-const blackjackGroup = new THREE.Group();
-blackjackGroup.position.copy(LAYOUT.blackjack);
-scene.add(blackjackGroup);
-
-const bjTable = new THREE.Mesh(
-  new THREE.CylinderGeometry(3.4, 3.4, 0.45, 20),
-  new THREE.MeshStandardMaterial({ map: bjTex, roughness: 0.75, emissive: 0x001a08, emissiveIntensity: 0.20 })
-);
-bjTable.position.set(0, 1.05, 0);
-bjTable.castShadow = bjTable.receiveShadow = true;
-blackjackGroup.add(bjTable);
-
-const bjBase = new THREE.Mesh(
-  new THREE.CylinderGeometry(3.8, 4.1, 0.65, 20),
-  new THREE.MeshStandardMaterial({ map: woodTex, roughness: 0.9, metalness: 0.04 })
-);
-bjBase.position.set(0, 0.35, 0);
-bjBase.castShadow = bjBase.receiveShadow = true;
-blackjackGroup.add(bjBase);
-
-const bjLight = new THREE.PointLight(0xffd42b, 120, 18, 2);
-bjLight.position.set(blackjackGroup.position.x, 3.4, blackjackGroup.position.z);
-scene.add(bjLight);
-
-addLabelAbove(blackjackGroup, "BLACKJACK", "#ffd42b");
-
-// Blackjack UI (playable)
-const bjUI = document.createElement("div");
-bjUI.className = "uiWrap";
-bjUI.innerHTML = `
-  <div class="uiCard">
-    <div class="uiHead">
-      <div class="uiTitle">BLACKJACK</div>
-      <button class="uiClose" id="bjClose">Close</button>
-    </div>
-    <div class="uiBody">
-      <div class="uiRow">
-        <div class="pill"><div><b>Balance</b></div><div id="bjBalance">$1000</div></div>
-        <div class="pill"><div><b>Bet</b></div><div id="bjBet">$50</div></div>
-        <div class="pill"><div><b>Status</b></div><div id="bjStatus">READY</div></div>
-      </div>
-
-      <div class="uiRow" style="margin-top:12px;">
-        <div class="pill" style="flex:1; min-width:260px;">
-          <div><b>Your Hand</b></div>
-          <div id="bjPlayerHand">—</div>
-          <div id="bjPlayerScore" style="opacity:.9; margin-top:4px;">Score: —</div>
-        </div>
-        <div class="pill" style="flex:1; min-width:260px;">
-          <div><b>Dealer</b></div>
-          <div id="bjDealerHand">—</div>
-          <div id="bjDealerScore" style="opacity:.9; margin-top:4px;">Score: —</div>
-        </div>
-      </div>
-
-      <div class="uiBtns">
-        <button class="btn" id="bjBetDown">Bet -</button>
-        <button class="btn" id="bjBetUp">Bet +</button>
-        <button class="btn btnPrimary" id="bjDeal">Deal</button>
-        <button class="btn" id="bjHit">Hit</button>
-        <button class="btn" id="bjStand">Stand</button>
-      </div>
-
-      <div class="msg" id="bjMsg">Click the blackjack table to play.</div>
-    </div>
-  </div>
-`;
-document.body.appendChild(bjUI);
-
-const $ = (id) => document.getElementById(id);
-
-let bj = {
+// --------------------------------------
+// BLACKJACK (more real rules + double)
+// --------------------------------------
+const blackjack = {
+  group: new THREE.Group(),
   open: false,
-  bet: 50,
+  bet: 25,
   deck: [],
   player: [],
   dealer: [],
-  phase: "ready"
+  phase: "ready", // ready, player, dealer
+  canDouble: false,
 };
 
-function bjMakeDeck() {
-  const ranks = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
-  const suits = ["♠","♥","♦","♣"];
-  const deck = [];
-  for (const s of suits) for (const r of ranks) deck.push({
-    r, s, label: `${r}${s}`,
-    value: (r === "A") ? 11 : (["K","Q","J"].includes(r) ? 10 : Number(r))
-  });
-  for (let i = deck.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [deck[i], deck[j]] = [deck[j], deck[i]];
-  }
-  return deck;
-}
-function bjScore(hand) {
-  let total = hand.reduce((sum, c) => sum + c.value, 0);
-  let aces = hand.filter(c => c.r === "A").length;
-  while (total > 21 && aces > 0) { total -= 10; aces--; }
-  return total;
-}
-function bjUpdateUI(msg) {
-  $("bjBalance").textContent = `$${Economy.balance}`;
-  $("bjBet").textContent = `$${bj.bet}`;
-  $("bjStatus").textContent = bj.phase.toUpperCase();
+blackjack.group.position.copy(LAYOUT.blackjack);
+scene.add(blackjack.group);
 
-  $("bjPlayerHand").textContent = bj.player.map(c => c.label).join(" ");
-  $("bjDealerHand").textContent = bj.dealer.map((c, i) => {
-    if (bj.phase === "player" && i === 1) return "🂠";
-    return c.label;
-  }).join(" ");
+addGameLabel(blackjack.group, "BLACKJACK", "#ffd42b");
 
-  const pScore = bjScore(bj.player);
-  const dScore = (bj.phase === "player") ? bjScore([bj.dealer[0]]) : bjScore(bj.dealer);
-  $("bjPlayerScore").textContent = `Score: ${bj.player.length ? pScore : "—"}`;
-  $("bjDealerScore").textContent = `Score: ${bj.dealer.length ? dScore : "—"}`;
+const felt = new THREE.MeshStandardMaterial({ color: 0x0e6b3a, roughness: 0.75, metalness: 0.02, emissive: 0x001a08, emissiveIntensity: 0.14 });
+const bjBase = new THREE.Mesh(
+  new THREE.CylinderGeometry(4.3, 4.6, 0.75, 28),
+  new THREE.MeshStandardMaterial({ map: woodTex, roughness: 0.88, metalness: 0.05 })
+);
+bjBase.position.y = 0.38;
+bjBase.castShadow = bjBase.receiveShadow = true;
+blackjack.group.add(bjBase);
 
-  if (msg) $("bjMsg").textContent = msg;
-  updateHUD();
-}
-function bjOpen() {
-  bj.open = true;
-  bjUI.style.display = "flex";
-  bjUpdateUI("Ready. Adjust bet or Deal.");
-}
-function bjClose() {
-  bj.open = false;
-  bjUI.style.display = "none";
-}
-$("bjClose").onclick = bjClose;
+const bjTop = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 3.6, 0.40, 28), felt);
+bjTop.position.y = 1.06;
+bjTop.castShadow = bjTop.receiveShadow = true;
+blackjack.group.add(bjTop);
+addInteractable(bjTop, "blackjack", blackjack);
 
-$("bjBetUp").onclick = () => {
-  if (bj.phase !== "ready") return;
-  bj.bet = Economy.clampBet(bj.bet + 25);
-  playChip();
-  bjUpdateUI();
-};
-$("bjBetDown").onclick = () => {
-  if (bj.phase !== "ready") return;
-  bj.bet = Economy.clampBet(bj.bet - 25);
-  playChip();
-  bjUpdateUI();
-};
-
-$("bjDeal").onclick = () => {
-  if (bj.phase !== "ready") return;
-  if (!Economy.canBet(bj.bet)) return bjUpdateUI("Not enough balance.");
-  Economy.bet(bj.bet);
-  playChip();
-
-  bj.deck = bjMakeDeck();
-  bj.player = [bj.deck.pop(), bj.deck.pop()];
-  bj.dealer = [bj.deck.pop(), bj.deck.pop()];
-  bj.phase = "player";
-
-  const p = bjScore(bj.player);
-  if (p === 21) {
-    // blackjack payout: 3:2 (profit = 1.5x bet)
-    const win = Math.floor(bj.bet * 2.5);
-    Economy.pay(win);
-    playWin();
-    bjUpdateUI(`BLACKJACK! Profit $${win - bj.bet}.`);
-    bj.phase = "ready";
-    return;
-  }
-  bjUpdateUI("Your turn: Hit or Stand.");
-};
-
-$("bjHit").onclick = () => {
-  if (bj.phase !== "player") return;
-  bj.player.push(bj.deck.pop());
-  playChip();
-  const p = bjScore(bj.player);
-  if (p > 21) {
-    bjUpdateUI("Bust. Dealer wins.");
-    bj.phase = "ready";
-    return;
-  }
-  bjUpdateUI("Hit or Stand?");
-};
-
-$("bjStand").onclick = () => {
-  if (bj.phase !== "player") return;
-  bj.phase = "dealer";
-
-  while (bjScore(bj.dealer) < 17) bj.dealer.push(bj.deck.pop());
-
-  const p = bjScore(bj.player);
-  const d = bjScore(bj.dealer);
-
-  if (d > 21 || p > d) {
-    Economy.pay(bj.bet * 2);
-    playWin();
-    bjUpdateUI(`You win! Dealer: ${d}. (+$${bj.bet})`);
-  } else if (p === d) {
-    Economy.pay(bj.bet);
-    bjUpdateUI(`Push. Dealer: ${d}. (Bet returned)`);
-  } else {
-    bjUpdateUI(`Dealer wins. Dealer: ${d}.`);
-  }
-  bj.phase = "ready";
-};
+const bjLight = new THREE.PointLight(0xffd42b, 170, 20, 2);
+bjLight.position.set(blackjack.group.position.x, 3.8, blackjack.group.position.z);
+scene.add(bjLight);
 
 // ======================
-// ROULETTE UI (playable) — bet type + payout
+// UI SYSTEM
+// ======================
+const UI = {
+  state: "none", // none, roulette, slots, blackjack
+  wraps: {},
+  open(which) {
+    closeAllUIs();
+    UI.state = which;
+    UI.wraps[which].style.display = "flex";
+    updateHUD();
+  },
+  close(which) {
+    if (UI.wraps[which]) UI.wraps[which].style.display = "none";
+    UI.state = "none";
+  }
+};
+function closeAllUIs() {
+  for (const k of Object.keys(UI.wraps)) UI.wraps[k].style.display = "none";
+  UI.state = "none";
+}
+
+// ======================
+// Roulette UI (real payouts)
 // ======================
 const rouletteUI = document.createElement("div");
 rouletteUI.className = "uiWrap";
 rouletteUI.innerHTML = `
   <div class="uiCard">
     <div class="uiHead">
-      <div class="uiTitle">ROULETTE</div>
+      <div class="uiTitle">ROULETTE (EUROPEAN 0–36)</div>
       <button class="uiClose" id="roulClose">Close</button>
     </div>
     <div class="uiBody">
@@ -1460,157 +1178,477 @@ rouletteUI.innerHTML = `
       </div>
 
       <div class="uiRow" style="margin-top:12px;">
-        <div class="pill" style="flex:1; min-width:240px;">
+        <div class="pill" style="flex:1; min-width:260px;">
           <div><b>Last Result</b></div>
           <div id="roulResult">—</div>
         </div>
-        <div class="pill" style="flex:1; min-width:240px;">
+        <div class="pill" style="flex:1; min-width:260px;">
           <div><b>Payout</b></div>
-          <div id="roulPayout">2x (RED/BLACK)</div>
+          <div id="roulPayout">1:1</div>
         </div>
       </div>
 
       <div class="uiBtns">
         <button class="btn" id="roulDown">Bet -</button>
         <button class="btn" id="roulUp">Bet +</button>
-        <button class="btn" id="roulTypeBtn">Change Bet Type</button>
+        <button class="btn" id="roulKind">Change Bet Type</button>
+        <button class="btn" id="roulPick" style="display:none;">Pick Number</button>
         <button class="btn btnPrimary" id="roulSpin">SPIN</button>
       </div>
 
-      <div class="msg" id="roulMsg">Click the roulette wheel to play.</div>
-      <div class="msg" style="opacity:.85;">
-        Bet types: RED • BLACK • GREEN(0) • NUMBER(choose 0-11)
+      <div class="msg" id="roulMsg">
+        Types: RED/BLACK/EVEN/ODD/LOW(1–18)/HIGH(19–36)/DOZENS/STRAIGHT.
       </div>
     </div>
   </div>
 `;
 document.body.appendChild(rouletteUI);
+UI.wraps.roulette = rouletteUI;
 
-let rouletteState = {
-  open: false,
-  bet: 25,
-  typeIndex: 0,
-  types: ["RED", "BLACK", "GREEN", "NUMBER"],
-  numberPick: 7,
-  spinning: false,
-  last: "—"
-};
+const r$ = (id) => document.getElementById(id);
+document.getElementById("roulClose").onclick = () => UI.close("roulette");
 
-function rouletteTypeText() {
-  const t = rouletteState.types[rouletteState.typeIndex];
-  if (t === "NUMBER") return `NUMBER (${rouletteState.numberPick})`;
-  return t;
+const ROULETTE_KINDS = [
+  "RED","BLACK","EVEN","ODD","LOW","HIGH",
+  "DOZEN1","DOZEN2","DOZEN3",
+  "STRAIGHT"
+];
+
+function roulettePayout(kind) {
+  if (kind === "STRAIGHT") return "35:1";
+  if (kind.startsWith("DOZEN")) return "2:1";
+  return "1:1";
 }
-function roulettePayoutText() {
-  const t = rouletteState.types[rouletteState.typeIndex];
-  if (t === "GREEN") return "12x (GREEN 0)";
-  if (t === "NUMBER") return "12x (Exact)";
-  return "2x (RED/BLACK)";
+
+function rouletteKindText() {
+  if (roulette.betKind === "STRAIGHT") return `STRAIGHT (${roulette.straight})`;
+  if (roulette.betKind === "DOZEN1") return "DOZEN (1–12)";
+  if (roulette.betKind === "DOZEN2") return "DOZEN (13–24)";
+  if (roulette.betKind === "DOZEN3") return "DOZEN (25–36)";
+  return roulette.betKind;
 }
 
 function rouletteRefresh(msg) {
-  document.getElementById("roulBal").textContent = `$${Economy.balance}`;
-  document.getElementById("roulBet").textContent = `$${rouletteState.bet}`;
-  document.getElementById("roulType").textContent = rouletteTypeText();
-  document.getElementById("roulPayout").textContent = roulettePayoutText();
-  document.getElementById("roulResult").textContent = rouletteState.last;
-  if (msg) document.getElementById("roulMsg").textContent = msg;
+  r$("roulBal").textContent = `$${Economy.balance}`;
+  r$("roulBet").textContent = `$${roulette.bet}`;
+  r$("roulType").textContent = rouletteKindText();
+  r$("roulPayout").textContent = roulettePayout(roulette.betKind);
+  r$("roulResult").textContent = roulette.last ? roulette.last : "—";
+  r$("roulPick").style.display = (roulette.betKind === "STRAIGHT") ? "inline-block" : "none";
+  if (msg) r$("roulMsg").textContent = msg;
   updateHUD();
 }
 
-function rouletteOpen() {
-  rouletteState.open = true;
-  rouletteState.spinning = false;
-  rouletteUI.style.display = "flex";
-  rouletteRefresh("Pick bet type and SPIN.");
+r$("roulUp").onclick = () => { if (roulette.spinning) return; roulette.bet = Economy.clampBet(roulette.bet + 10); playChip(); rouletteRefresh(); };
+r$("roulDown").onclick = () => { if (roulette.spinning) return; roulette.bet = Economy.clampBet(roulette.bet - 10); playChip(); rouletteRefresh(); };
+
+r$("roulKind").onclick = () => {
+  if (roulette.spinning) return;
+  const idx = ROULETTE_KINDS.indexOf(roulette.betKind);
+  roulette.betKind = ROULETTE_KINDS[(idx + 1) % ROULETTE_KINDS.length];
+  playChip();
+  rouletteRefresh();
+};
+
+r$("roulPick").onclick = () => {
+  if (roulette.spinning) return;
+  const n = prompt("Pick a number (0–36):", String(roulette.straight));
+  const v = Math.max(0, Math.min(36, parseInt(n ?? "", 10)));
+  if (!Number.isNaN(v)) roulette.straight = v;
+  playChip();
+  rouletteRefresh();
+};
+
+function rouletteWinsNumber(n) {
+  const col = rouletteColor(n);
+  const kind = roulette.betKind;
+
+  if (kind === "RED") return col === "RED";
+  if (kind === "BLACK") return col === "BLACK";
+  if (kind === "EVEN") return n !== 0 && (n % 2 === 0);
+  if (kind === "ODD")  return n !== 0 && (n % 2 === 1);
+  if (kind === "LOW")  return n >= 1 && n <= 18;
+  if (kind === "HIGH") return n >= 19 && n <= 36;
+  if (kind === "DOZEN1") return n >= 1 && n <= 12;
+  if (kind === "DOZEN2") return n >= 13 && n <= 24;
+  if (kind === "DOZEN3") return n >= 25 && n <= 36;
+  if (kind === "STRAIGHT") return n === roulette.straight;
+  return false;
 }
-function rouletteClose() {
-  rouletteState.open = false;
-  rouletteState.spinning = false;
-  rouletteUI.style.display = "none";
+
+function rouletteWinAmount(bet) {
+  if (roulette.betKind === "STRAIGHT") return bet * 36; // returns bet + profit (35:1 profit)
+  if (roulette.betKind.startsWith("DOZEN")) return bet * 3; // bet + 2:1 profit
+  return bet * 2; // bet + 1:1 profit
 }
-document.getElementById("roulClose").onclick = rouletteClose;
 
-document.getElementById("roulUp").onclick = () => {
-  if (rouletteState.spinning) return;
-  rouletteState.bet = Economy.clampBet(rouletteState.bet + 10);
-  playChip();
-  rouletteRefresh();
-};
-document.getElementById("roulDown").onclick = () => {
-  if (rouletteState.spinning) return;
-  rouletteState.bet = Economy.clampBet(rouletteState.bet - 10);
-  playChip();
-  rouletteRefresh();
-};
-
-document.getElementById("roulTypeBtn").onclick = () => {
-  if (rouletteState.spinning) return;
-  rouletteState.typeIndex = (rouletteState.typeIndex + 1) % rouletteState.types.length;
-
-  // if NUMBER, prompt for 0-11 (simple)
-  if (rouletteState.types[rouletteState.typeIndex] === "NUMBER") {
-    const n = prompt("Pick a number (0-11):", String(rouletteState.numberPick));
-    const v = Math.max(0, Math.min(11, parseInt(n ?? "", 10)));
-    if (!Number.isNaN(v)) rouletteState.numberPick = v;
-  }
-
-  playChip();
-  rouletteRefresh();
-};
-
-let rouletteSettleT = 0;
-document.getElementById("roulSpin").onclick = () => {
-  if (rouletteState.spinning) return;
-  const b = rouletteState.bet;
+function rouletteSpin() {
+  if (roulette.spinning) return;
+  const b = roulette.bet;
   if (!Economy.canBet(b)) return rouletteRefresh("Not enough balance.");
   Economy.bet(b);
   updateHUD();
 
-  rouletteState.spinning = true;
-  rouletteSettleT = 2.2; // settle time
+  roulette.spinning = true;
+  roulette.settleT = 2.8;
+  roulette.win = 0;
+
+  // audio + spin animation
+  SND.roul.play();
+  playChip();
+
+  // choose uniform outcome (real roulette is uniform)
+  const n = (Math.random() * 37) | 0; // 0..36
+  roulette._pendingNumber = n;
+
   rouletteRefresh("Spinning...");
-  spinRoulettePhysics();
-};
-
-// Determine win after settle
-function rouletteResolve() {
-  // Use wheel rotation angle as “result” (simple but consistent)
-  const idx = rouletteResultFromWheelAngle(rouletteWheel.rotation.y);
-  const color = wedgeColors[idx];
-  const number = idx; // 0..11
-  rouletteState.last = `#${number} • ${color.toUpperCase()}`;
-
-  const t = rouletteState.types[rouletteState.typeIndex];
-  let win = 0;
-
-  if (t === "RED" && color === "red") win = rouletteState.bet * 2;
-  if (t === "BLACK" && color === "black") win = rouletteState.bet * 2;
-  if (t === "GREEN" && color === "green") win = rouletteState.bet * 12;
-  if (t === "NUMBER" && number === rouletteState.numberPick) win = rouletteState.bet * 12;
-
-  if (win > 0) {
-    Economy.pay(win);
-    playWin();
-    rouletteRefresh(`WIN! +$${win - rouletteState.bet} profit`);
-  } else {
-    rouletteRefresh("No win. Try again.");
-  }
-
-  rouletteState.spinning = false;
 }
 
+r$("roulSpin").onclick = () => rouletteSpin();
+
+// --------------------------------------
+// Slots UI
+// --------------------------------------
+const slotsUI = document.createElement("div");
+slotsUI.className = "uiWrap";
+slotsUI.innerHTML = `
+  <div class="uiCard">
+    <div class="uiHead">
+      <div class="uiTitle">SLOTS (3-REEL)</div>
+      <button class="uiClose" id="slotClose">Close</button>
+    </div>
+    <div class="uiBody">
+      <div class="uiRow">
+        <div class="pill"><div><b>Balance</b></div><div id="slotBal">$0</div></div>
+        <div class="pill"><div><b>Bet</b></div><div id="slotBet">$10</div></div>
+        <div class="pill"><div><b>Last</b></div><div id="slotLast">—</div></div>
+      </div>
+
+      <div class="pill" style="margin-top:12px; font-size:24px;">
+        <div><b>Payline</b></div>
+        <div id="slotReels" style="font-weight:1000; font-size:34px; letter-spacing:3px;">— — —</div>
+      </div>
+
+      <div class="uiBtns">
+        <button class="btn" id="slotDown">Bet -</button>
+        <button class="btn" id="slotUp">Bet +</button>
+        <button class="btn btnPrimary" id="slotSpin">SPIN</button>
+      </div>
+
+      <div class="msg" id="slotMsg">
+        3-match pays per symbol • 2-match pays smaller. Rarer symbols hit less often.
+      </div>
+    </div>
+  </div>
+`;
+document.body.appendChild(slotsUI);
+UI.wraps.slots = slotsUI;
+
+const s$ = (id)=>document.getElementById(id);
+document.getElementById("slotClose").onclick = ()=>UI.close("slots");
+
+function slotsRefresh(msg) {
+  s$("slotBal").textContent = `$${Economy.balance}`;
+  s$("slotBet").textContent = `$${slots.bet}`;
+  s$("slotReels").textContent = slots.last ? slots.last.join(" ") : "— — —";
+  s$("slotLast").textContent = slots._lastMsg || "—";
+  if (msg) s$("slotMsg").textContent = msg;
+  updateHUD();
+}
+
+s$("slotUp").onclick = ()=>{ if (slots.spinning) return; slots.bet = Economy.clampBet(slots.bet + 5); playChip(); slotsRefresh(); };
+s$("slotDown").onclick = ()=>{ if (slots.spinning) return; slots.bet = Economy.clampBet(slots.bet - 5); playChip(); slotsRefresh(); };
+
+function spinOneReel(strip, index) {
+  // advance 12–30 steps to simulate spin
+  const steps = 12 + ((Math.random()*18)|0);
+  return (index + steps) % strip.length;
+}
+
+function evalSlots(a,b,c, bet) {
+  // payout based on symbol multipliers
+  // 3 same: mult3; 2 same (adjacent): mult2
+  if (a===b && b===c) {
+    const info = symInfo(a);
+    const win = bet * (info?.mult3 ?? 0);
+    return { win, msg: `JACKPOT x${info?.mult3 ?? 0} (${a}${a}${a})` };
+  }
+  if (a===b || b===c) {
+    const sym = b; // middle is shared in adjacent matches
+    const info = symInfo(sym);
+    const win = bet * (info?.mult2 ?? 0);
+    return { win, msg: win>0 ? `MATCH x${info?.mult2 ?? 0} (${sym}${sym})` : "No win" };
+  }
+  return { win: 0, msg: "No win" };
+}
+
+function slotsSpin() {
+  if (slots.spinning) return;
+  const b = slots.bet;
+  if (!Economy.canBet(b)) return slotsRefresh("Not enough balance.");
+  Economy.bet(b);
+  updateHUD();
+
+  slots.spinning = true;
+  slots._lastMsg = "Spinning...";
+  SND.slotSpin.play();
+  playChip();
+  slotsRefresh();
+
+  // animate reels quickly
+  let ticks = 18;
+  const timer = setInterval(() => {
+    // fake while spinning
+    const tmp = [
+      REEL_STRIPS[0][(Math.random()*REEL_STRIPS[0].length)|0],
+      REEL_STRIPS[1][(Math.random()*REEL_STRIPS[1].length)|0],
+      REEL_STRIPS[2][(Math.random()*REEL_STRIPS[2].length)|0]
+    ];
+    slots.last = tmp;
+    slotVisuals.forEach(v=>v.drawReels(tmp[0],tmp[1],tmp[2],"SPINNING..."));
+    slotsRefresh();
+    ticks--;
+    if (ticks<=0){
+      clearInterval(timer);
+
+      slots.reels[0] = spinOneReel(REEL_STRIPS[0], slots.reels[0]);
+      slots.reels[1] = spinOneReel(REEL_STRIPS[1], slots.reels[1]);
+      slots.reels[2] = spinOneReel(REEL_STRIPS[2], slots.reels[2]);
+
+      const a = REEL_STRIPS[0][slots.reels[0]];
+      const bSym = REEL_STRIPS[1][slots.reels[1]];
+      const c = REEL_STRIPS[2][slots.reels[2]];
+      slots.last = [a,bSym,c];
+
+      const result = evalSlots(a,bSym,c, b);
+      if (result.win > 0) {
+        Economy.pay(result.win + b); // return bet + profit (we already removed bet; easiest is pay bet+profit)
+        playWin();
+        slots._lastMsg = `WIN +$${result.win} profit`;
+      } else {
+        slots._lastMsg = "Lost.";
+      }
+
+      slotVisuals.forEach(v=>v.drawReels(a,bSym,c, result.msg));
+      slots.spinning = false;
+      slotsRefresh(result.msg);
+    }
+  }, 60);
+}
+s$("slotSpin").onclick = ()=>slotsSpin();
+
+// --------------------------------------
+// Blackjack UI (real-ish rules + double)
+// --------------------------------------
+const blackjackUI = document.createElement("div");
+blackjackUI.className = "uiWrap";
+blackjackUI.innerHTML = `
+  <div class="uiCard">
+    <div class="uiHead">
+      <div class="uiTitle">BLACKJACK</div>
+      <button class="uiClose" id="bjClose">Close</button>
+    </div>
+    <div class="uiBody">
+      <div class="uiRow">
+        <div class="pill"><div><b>Balance</b></div><div id="bjBal">$0</div></div>
+        <div class="pill"><div><b>Bet</b></div><div id="bjBet">$25</div></div>
+        <div class="pill"><div><b>Status</b></div><div id="bjStatus">READY</div></div>
+      </div>
+
+      <div class="uiRow" style="margin-top:12px;">
+        <div class="pill" style="flex:1; min-width:300px;">
+          <div><b>Your Hand</b></div>
+          <div id="bjPH">—</div>
+          <div id="bjPS" style="opacity:.9; margin-top:4px;">Score: —</div>
+        </div>
+        <div class="pill" style="flex:1; min-width:300px;">
+          <div><b>Dealer</b></div>
+          <div id="bjDH">—</div>
+          <div id="bjDS" style="opacity:.9; margin-top:4px;">Score: —</div>
+        </div>
+      </div>
+
+      <div class="uiBtns">
+        <button class="btn" id="bjDown">Bet -</button>
+        <button class="btn" id="bjUp">Bet +</button>
+        <button class="btn btnPrimary" id="bjDeal">Deal</button>
+        <button class="btn" id="bjHit">Hit</button>
+        <button class="btn" id="bjStand">Stand</button>
+        <button class="btn" id="bjDouble">Double</button>
+      </div>
+
+      <div class="msg" id="bjMsg">Rules: Dealer stands on 17. Blackjack pays 3:2.</div>
+    </div>
+  </div>
+`;
+document.body.appendChild(blackjackUI);
+UI.wraps.blackjack = blackjackUI;
+
+const b$=(id)=>document.getElementById(id);
+document.getElementById("bjClose").onclick = ()=>UI.close("blackjack");
+
+function makeDeck() {
+  const ranks = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
+  const suits = ["♠","♥","♦","♣"];
+  const deck = [];
+  for (const s of suits) for (const r of ranks) deck.push({
+    r, s, label: `${r}${s}`,
+    v: (r==="A")?11:(["K","Q","J"].includes(r)?10:Number(r))
+  });
+  for (let i=deck.length-1;i>0;i--){
+    const j=(Math.random()*(i+1))|0;
+    [deck[i],deck[j]]=[deck[j],deck[i]];
+  }
+  return deck;
+}
+
+function score(hand) {
+  let t=hand.reduce((sum,c)=>sum+c.v,0);
+  let aces=hand.filter(c=>c.r==="A").length;
+  while (t>21 && aces>0){ t-=10; aces--; }
+  return t;
+}
+
+function bjRefresh(msg) {
+  b$("bjBal").textContent = `$${Economy.balance}`;
+  b$("bjBet").textContent = `$${blackjack.bet}`;
+  b$("bjStatus").textContent = blackjack.phase.toUpperCase();
+
+  b$("bjPH").textContent = blackjack.player.map(c=>c.label).join(" ");
+  const dealerShown = blackjack.phase==="player" ? blackjack.dealer.map((c,i)=> i===1 ? "🂠" : c.label) : blackjack.dealer.map(c=>c.label);
+  b$("bjDH").textContent = dealerShown.join(" ");
+
+  const ps = blackjack.player.length ? score(blackjack.player) : "—";
+  const ds = blackjack.dealer.length ? (blackjack.phase==="player" ? score([blackjack.dealer[0]]) : score(blackjack.dealer)) : "—";
+  b$("bjPS").textContent = `Score: ${ps}`;
+  b$("bjDS").textContent = `Score: ${ds}`;
+
+  // enable/disable double
+  b$("bjDouble").style.opacity = blackjack.canDouble ? "1" : "0.5";
+
+  if (msg) b$("bjMsg").textContent = msg;
+  updateHUD();
+}
+
+b$("bjUp").onclick = ()=>{ if (blackjack.phase!=="ready") return; blackjack.bet = Economy.clampBet(blackjack.bet+25); playChip(); bjRefresh(); };
+b$("bjDown").onclick = ()=>{ if (blackjack.phase!=="ready") return; blackjack.bet = Economy.clampBet(blackjack.bet-25); playChip(); bjRefresh(); };
+
+function bjDeal() {
+  if (blackjack.phase!=="ready") return;
+  if (!Economy.canBet(blackjack.bet)) return bjRefresh("Not enough balance.");
+  Economy.bet(blackjack.bet);
+  playChip();
+
+  blackjack.deck = makeDeck();
+  blackjack.player = [blackjack.deck.pop(), blackjack.deck.pop()];
+  blackjack.dealer = [blackjack.deck.pop(), blackjack.deck.pop()];
+  blackjack.phase = "player";
+  blackjack.canDouble = true;
+
+  const p = score(blackjack.player);
+  const dUp = blackjack.dealer[0];
+  const dealerHasBJ = (score(blackjack.dealer)===21);
+  const playerHasBJ = (p===21);
+
+  // blackjack resolution
+  if (playerHasBJ || dealerHasBJ) {
+    blackjack.phase = "dealer";
+    const d = score(blackjack.dealer);
+
+    if (playerHasBJ && !dealerHasBJ) {
+      // 3:2 payout: you get bet back + 1.5*bet profit => total 2.5*bet
+      Economy.pay(Math.floor(blackjack.bet * 2.5));
+      playWin();
+      bjRefresh("BLACKJACK! Paid 3:2.");
+    } else if (dealerHasBJ && !playerHasBJ) {
+      bjRefresh(`Dealer blackjack (${dUp.label}). You lose.`);
+    } else {
+      Economy.pay(blackjack.bet); // push return bet
+      bjRefresh("Both blackjack. Push.");
+    }
+    blackjack.phase = "ready";
+    blackjack.canDouble = false;
+    return;
+  }
+
+  bjRefresh("Your turn: Hit / Stand / Double.");
+}
+b$("bjDeal").onclick = ()=>bjDeal();
+
+function bjHit() {
+  if (blackjack.phase!=="player") return;
+  blackjack.player.push(blackjack.deck.pop());
+  playChip();
+  blackjack.canDouble = false;
+
+  const p = score(blackjack.player);
+  if (p > 21) {
+    bjRefresh("Bust. Dealer wins.");
+    blackjack.phase = "ready";
+    return;
+  }
+  bjRefresh("Hit or Stand?");
+}
+b$("bjHit").onclick = ()=>bjHit();
+
+function bjStand() {
+  if (blackjack.phase!=="player") return;
+  blackjack.phase = "dealer";
+  blackjack.canDouble = false;
+
+  // dealer stands on 17 (including soft 17)
+  while (score(blackjack.dealer) < 17) blackjack.dealer.push(blackjack.deck.pop());
+
+  const p = score(blackjack.player);
+  const d = score(blackjack.dealer);
+
+  if (d > 21 || p > d) {
+    Economy.pay(blackjack.bet * 2); // return bet + 1x profit
+    playWin();
+    bjRefresh(`You win! Dealer ${d}. (+$${blackjack.bet})`);
+  } else if (p === d) {
+    Economy.pay(blackjack.bet);
+    bjRefresh(`Push. Dealer ${d}. (Bet returned)`);
+  } else {
+    bjRefresh(`Dealer wins. Dealer ${d}.`);
+  }
+  blackjack.phase = "ready";
+}
+b$("bjStand").onclick = ()=>bjStand();
+
+function bjDouble() {
+  if (blackjack.phase !== "player" || !blackjack.canDouble) return;
+  if (!Economy.canBet(blackjack.bet)) return bjRefresh("Not enough balance to double.");
+  Economy.bet(blackjack.bet);
+  blackjack.bet *= 2;
+  playChip();
+
+  blackjack.player.push(blackjack.deck.pop());
+  blackjack.canDouble = false;
+
+  const p = score(blackjack.player);
+  if (p > 21) {
+    bjRefresh("Bust after double. Dealer wins.");
+    blackjack.phase = "ready";
+    return;
+  }
+  bjStand();
+}
+b$("bjDouble").onclick = ()=>bjDouble();
+
 // ======================
-// Raycast click interactions (open UIs)
+// Raycast + click interactions
 // ======================
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
-function anyUIOpen() {
-  return slotState.open || bj.open || rouletteState.open;
+function openGame(type) {
+  if (type === "roulette") { UI.open("roulette"); rouletteRefresh("Pick a bet type, then SPIN."); }
+  if (type === "slots")    { UI.open("slots");    slotsRefresh("Set bet, then SPIN."); }
+  if (type === "blackjack"){ UI.open("blackjack"); bjRefresh("Adjust bet, then Deal."); }
 }
 
-function onClick(e) {
+window.addEventListener("click", (e) => {
   if (!started) return;
   if (anyUIOpen()) return;
 
@@ -1618,157 +1656,176 @@ function onClick(e) {
   mouse.y = -(e.clientY / innerHeight) * 2 + 1;
   raycaster.setFromCamera(mouse, camera);
 
-  // Interactables
-  const objects = [rouletteWheel, bjTable];
-  for (const s of slots) objects.push(s.button);
-
-  const hits = raycaster.intersectObjects(objects, true);
+  const hits = raycaster.intersectObjects(interactables, true);
   if (!hits.length) return;
 
-  const hit = hits[0].object;
+  const obj = hits[0].object;
+  const t = obj.userData.type;
 
-  if (hit === rouletteWheel) {
-    rouletteOpen();
-    return;
-  }
-  if (hit === bjTable) {
-    bjOpen();
-    return;
-  }
-  for (const s of slots) {
-    if (hit === s.button) {
-      slotOpen(s);
-      return;
-    }
-  }
-}
-addEventListener("click", onClick);
-
-// Close UIs with Escape
-addEventListener("keydown", (e) => {
-  if (e.code === "Escape") {
-    if (slotState.open) slotClose();
-    if (rouletteState.open) rouletteClose();
-    if (bj.open) bjClose();
-  }
+  // Special: slot click opens slots UI
+  if (t === "slots") { openGame("slots"); return; }
+  if (t === "roulette") { openGame("roulette"); return; }
+  if (t === "blackjack") { openGame("blackjack"); return; }
 });
 
 // ======================
-// Decorative “clearly readable” props near zones
-// (simple icons: chips stacks + dice) — helps instantly tell areas
+// Roulette settle + result + payouts
 // ======================
-function addChipStack(x, z, colorHex) {
-  const g = new THREE.Group();
-  g.position.set(x, 0, z);
-  scene.add(g);
-
-  const chipMat = new THREE.MeshStandardMaterial({ color: colorHex, roughness: 0.5, metalness: 0.05, emissive: colorHex, emissiveIntensity: 0.12 });
-  for (let i=0;i<5;i++){
-    const chip = new THREE.Mesh(new THREE.CylinderGeometry(0.45,0.45,0.12,12), chipMat);
-    chip.position.set(0, 0.10 + i*0.13, 0);
-    chip.castShadow = chip.receiveShadow = true;
-    g.add(chip);
-
-    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.33, 0.04, 8, 14),
-      new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xffffff, emissiveIntensity: 0.1, roughness: 0.6 })
-    );
-    ring.rotation.x = Math.PI/2;
-    ring.position.y = chip.position.y + 0.02;
-    g.add(ring);
+function finishRoulette() {
+  const n = roulette._pendingNumber;
+  const col = rouletteColor(n);
+  roulette.last = `${n} • ${col}`;
+  const win = rouletteWinsNumber(n);
+  if (win) {
+    const totalReturn = rouletteWinAmount(roulette.bet); // returns bet+profit
+    Economy.pay(totalReturn);
+    playWin();
+    rouletteRefresh(`WIN! Result ${roulette.last}. Paid ${roulettePayout(roulette.betKind)}.`);
+  } else {
+    rouletteRefresh(`Lost. Result ${roulette.last}.`);
   }
-  return g;
+  roulette.spinning = false;
+  roulette.settleT = 0;
+  updateHUD();
 }
-addChipStack(-20, 8, 0x2bf7ff);  // roulette chips
-addChipStack(18, 8, 0xff2bd6);   // slots chips
-addChipStack(0, -22, 0xffd42b);  // blackjack chips
 
 // ======================
-// Animation + Updates
+// 120Hz simulation loop
+// - Browsers render at display refresh; we simulate at 120Hz for smooth feel.
 // ======================
+let simAcc = 0;
+const SIM_DT = 1 / 120;
+
+// Simple lightweight physics visuals (roulette ball is purely visual here)
+const rouletteBall = new THREE.Mesh(
+  new THREE.SphereGeometry(0.12, 16, 16),
+  new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.22, metalness: 0.08 })
+);
+rouletteBall.castShadow = true;
+rouletteBall.position.set(roulette.group.position.x + 3.8, 1.55, roulette.group.position.z);
+scene.add(rouletteBall);
+
+let ballAng = 0;
+let ballRad = 3.85;
+
+function simStep(dt, t) {
+  // movement
+  updateMovement(dt);
+
+  // chandeliers tiny sway
+  for (const c of chandeliers) {
+    c.rotation.y += dt * c.userData.spin * 0.35;
+    c.rotation.z = Math.sin(t*0.8 + c.userData.spin) * 0.02;
+  }
+
+  // neon pulse
+  neonPink.intensity = 150 + Math.sin(t*1.8)*25;
+  neonCyan.intensity = 150 + Math.sin(t*1.6 + 1.2)*25;
+  neonGold.intensity = 105 + Math.sin(t*1.4 + 2.1)*20;
+
+  // dancers + gamblers idle anim
+  for (const p of npcs) {
+    const u = p.userData;
+    u.t += dt;
+    const w = (u.style==="dancer") ? 2.6 : 1.2;
+    const a = (u.style==="dancer") ? 0.85 : 0.35;
+
+    u.arm1.rotation.z = Math.sin(u.t*w + u.seed) * a;
+    u.arm2.rotation.z = -Math.sin(u.t*w + u.seed) * a;
+    u.leg1.rotation.x = Math.sin(u.t*w*0.8 + u.seed) * (a*0.35);
+    u.leg2.rotation.x = -Math.sin(u.t*w*0.8 + u.seed) * (a*0.35);
+
+    if (u.style === "dancer") {
+      p.position.y = Math.abs(Math.sin(u.t*3.0 + u.seed)) * 0.05;
+      p.rotation.y += dt * 0.4;
+    } else {
+      p.position.y = 0;
+      p.rotation.y += Math.sin(u.t*0.8 + u.seed) * 0.001;
+    }
+  }
+
+  // roulette wheel + ball spin animation
+  roulWheel.rotation.y += dt * (roulette.spinning ? 4.8 : 0.35);
+  rim.material.emissiveIntensity = 0.85 + Math.sin(t*3.4)*0.10;
+
+  if (roulette.spinning) {
+    roulette.settleT -= dt;
+    ballAng += dt * 8.0;
+    ballRad = approach(ballRad, 3.2, dt * 0.6); // drift inward
+    rouletteBall.position.set(
+      roulette.group.position.x + Math.cos(ballAng) * ballRad,
+      1.55,
+      roulette.group.position.z + Math.sin(ballAng) * ballRad
+    );
+
+    if (roulette.settleT <= 0) {
+      // "land" ball near a pocket position visually
+      const n = roulette._pendingNumber;
+      const idx = ROULETTE_ORDER.indexOf(n);
+      const a = (idx / 37) * Math.PI * 2;
+      rouletteBall.position.set(
+        roulette.group.position.x + Math.cos(a) * 3.05,
+        1.50,
+        roulette.group.position.z + Math.sin(a) * 3.05
+      );
+      finishRoulette();
+    }
+  } else {
+    // idle ball
+    ballAng += dt * 0.3;
+    rouletteBall.position.set(
+      roulette.group.position.x + Math.cos(ballAng) * 3.8,
+      1.55,
+      roulette.group.position.z + Math.sin(ballAng) * 3.8
+    );
+  }
+}
+
 const clock = new THREE.Clock();
 
+// ======================
+// Render loop (rAF)
+// ======================
 function animate() {
   requestAnimationFrame(animate);
-  const dt = Math.min(0.033, clock.getDelta());
+
+  const frameDt = Math.min(0.05, clock.getDelta());
   const t = clock.elapsedTime;
+  simAcc += frameDt;
 
-  // movement (disable when UI open)
-  if (started && !anyUIOpen()) updateMovement(dt);
-
-  // neon vibe
-  neonA.position.x = -22 + Math.sin(t * 0.8) * 2.3;
-  neonB.position.x =  22 + Math.sin(t * 0.8 + 1.7) * 2.3;
-  sign.material.emissiveIntensity = 0.55 + Math.sin(t * 6.0) * 0.18;
-  signLight.intensity = 130 + Math.sin(t * 6.0) * 40;
-
-  // roulette wheel spins slowly always
-  rouletteWheel.rotation.y += dt * 0.50;
-  rouletteRim.material.emissiveIntensity = 0.85 + Math.sin(t * 5.5) * 0.18;
-
-  // roulette settle countdown
-  if (rouletteState.spinning) {
-    rouletteSettleT -= dt;
-    if (rouletteSettleT <= 0) {
-      rouletteResolve();
-    }
+  // step simulation at 120Hz
+  let steps = 0;
+  while (simAcc >= SIM_DT && steps < 6) {
+    simStep(SIM_DT, t);
+    simAcc -= SIM_DT;
+    steps++;
   }
 
-  // slot “idle glow”
-  for (const s of slots) {
-    const idle = 0.25 + Math.sin(t * 5.0 + s.group.position.x * 0.2) * 0.08;
-    if (!slotState.spinning || slotState.activeSlot !== s) {
-      s.screenMat.emissiveIntensity = 0.30 + idle;
-      s.trimMat.emissiveIntensity = 0.80;
-      s.glow.intensity = 85;
-      s.btnMat.emissiveIntensity = 0.20;
-    }
-    if (s.winT > 0) {
-      s.winT -= dt;
-      s.screenMat.emissiveIntensity = 0.75 + Math.sin(t*30)*0.25;
-      s.trimMat.emissiveIntensity = 1.35;
-      s.glow.intensity = 140;
-      s.btnMat.emissiveIntensity = 0.9;
-
-      const pop = 1.0 + 0.06 * Math.sin((1.0 - s.winT) * 16.0);
-      s.group.scale.set(pop, pop, pop);
-      if (s.winT <= 0) s.group.scale.set(1,1,1);
-    }
-  }
-
-  // physics
-  world.step(1/60, dt, 3);
-  inwardForce(ballBody);
-  ballMesh.position.set(ballBody.position.x, ballBody.position.y, ballBody.position.z);
-
-  // coins
-  for (let i = coinParticles.length - 1; i >= 0; i--) {
-    const c = coinParticles[i];
-    c.userData.life -= dt;
-    c.userData.v.y -= 6.0 * dt;
-    c.position.addScaledVector(c.userData.v, dt);
-    c.rotation.x += dt * 6;
-    c.rotation.y += dt * 8;
-
-    if (c.userData.life <= 0 || c.position.y < 0.05) {
-      scene.remove(c);
-      coinParticles.splice(i, 1);
-    }
-  }
-
-  // render pixelated (low-res -> blit)
-  renderer.setRenderTarget(lowRes.rt);
   renderer.render(scene, camera);
-  renderer.setRenderTarget(null);
-  renderer.render(blitScene, blitCam);
 }
 animate();
+
+// ======================
+// UI open helpers
+// ======================
+function rouletteOpen() { UI.open("roulette"); rouletteRefresh("Pick a bet type, then SPIN."); }
+function slotsOpen() { UI.open("slots"); slotsRefresh("Set bet, then SPIN."); }
+function blackjackOpen() { UI.open("blackjack"); bjRefresh("Adjust bet, then Deal."); }
+
+// Let user click the *actual wheel* to open roulette UI (already set via interactable)
+// But also allow wheel click to spin once UI is open (button exists anyway)
+
+// Hook buttons
+rouletteUI.querySelector("#roulSpin").addEventListener("click", () => { roulette.spinning = false; rouletteSpin(); });
+slotsUI.querySelector("#slotSpin").addEventListener("click", () => slotsSpin());
+blackjackUI.querySelector("#bjDeal").addEventListener("click", () => bjDeal());
 
 // ======================
 // Resize
 // ======================
 addEventListener("resize", () => {
   renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
-  rebuildLowResTarget();
 });
