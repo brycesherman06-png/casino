@@ -4,17 +4,32 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>3D Casino</title>
+
+  <!-- Main styles -->
   <link rel="stylesheet" href="styles.css" />
 </head>
 
 <body>
+  <!-- Required for audio + pointer lock -->
   <div id="overlay">Click to enter</div>
+
+  <!-- Three.js renders into this canvas -->
   <canvas id="c"></canvas>
 
-  <!-- SCRIPTS: ORDER MATTERS -->
+  <!-- ================= SCRIPTS (ORDER MATTERS) ================= -->
+
+  <!-- 1) Three.js (3D engine) -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+
+  <!-- 2) Howler.js (sound engine — even if sounds are generated) -->
   <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"></script>
+
+  <!-- 3) Cannon.js (physics engine) -->
   <script src="https://cdn.jsdelivr.net/npm/cannon@0.6.2/build/cannon.min.js"></script>
+
+  <!-- 4) Your game code (must be LAST) -->
   <script src="main.js"></script>
+
+  <!-- =========================================================== -->
 </body>
 </html>
