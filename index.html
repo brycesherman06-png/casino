@@ -1,193 +1,97 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Neon Casino V2</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3D Casino – Test Scene</title>
 
-<style>
-body {
-  margin:0;
-  background:#05070d;
-  font-family:system-ui;
-  color:white;
-  text-align:center;
-}
-header {
-  padding:15px;
-  font-size:26px;
-  font-weight:700;
-  color:#00ffd5;
-}
-.card {
-  background:#0e1325;
-  margin:15px auto;
-  padding:20px;
-  border-radius:16px;
-  max-width:420px;
-  box-shadow:0 0 30px rgba(0,255,213,.25);
-}
-button {
-  width:100%;
-  padding:14px;
-  margin-top:10px;
-  font-size:16px;
-  border:none;
-  border-radius:12px;
-  background:linear-gradient(135deg,#f5c542,#ff9800);
-  cursor:pointer;
-}
-button:active { transform:scale(.97); }
-canvas {
-  background:#02030a;
-  border-radius:12px;
-}
-.hidden { display:none; }
-</style>
+  <style>
+    /* Reset + full screen canvas */
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #000;
+    }
+
+    canvas {
+      display: block;
+    }
+  </style>
 </head>
 
 <body>
 
-<header>🎰 Neon Casino</header>
+  <!-- LOAD THREE.JS FROM YOUR LIBS FOLDER -->
+  <script src="libs/three.min.js"></script>
 
-<div id="login" class="card">
-  <h2>Create / Login Account</h2>
-  <input id="user" placeholder="Username"><br><br>
-  <button onclick="login()">Enter Casino</button>
-</div>
+  <script>
+    // =========================
+    // BASIC THREE.JS TEST SCENE
+    // =========================
 
-<div id="casino" class="hidden">
-  <div class="card">
-    <div id="balance"></div>
-    <div id="hash"></div>
-  </div>
+    // Scene
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x050510);
 
-  <div class="card">
-    <button onclick="show('roulette')">🎡 Roulette</button>
-    <button onclick="show('crash')">📉 Crash</button>
-  </div>
+    // Camera
+    const camera = new THREE.PerspectiveCamera(
+      75,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      1000
+    );
+    camera.position.z = 5;
 
-  <!-- ROULETTE -->
-  <div id="roulette" class="card hidden">
-    <h2>Roulette</h2>
-    <canvas id="wheel" width="300" height="300"></canvas>
-    <button onclick="spinRoulette()">Spin ($100)</button>
-  </div>
+    // Renderer
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true
+    });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    document.body.appendChild(renderer.domElement);
 
-  <!-- CRASH -->
-  <div id="crash" class="card hidden">
-    <h2>Crash</h2>
-    <canvas id="graph" width="300" height="200"></canvas>
-    <button onclick="startCrash()">Start ($50)</button>
-  </div>
-</div>
+    // Geometry (cube)
+    const geometry = new THREE.BoxGeometry(1.5, 1.5, 1.5);
 
-<audio id="spinSound" src="https://assets.codepen.io/3/coin.mp3"></audio>
-<audio id="winSound" src="https://assets.codepen.io/3/success.mp3"></audio>
+    const material = new THREE.MeshStandardMaterial({
+      color: 0x00ffd5,
+      metalness: 0.7,
+      roughness: 0.25
+    });
 
-<script>
-/* ======================
-   ACCOUNT SYSTEM
-====================== */
-let user, balance, seed;
+    const cube = new THREE.Mesh(geometry, material);
+    scene.add(cube);
 
-function login() {
-  user = document.getElementById("user").value;
-  if(!user) return;
-  let data = JSON.parse(localStorage.getItem(user)) || {balance:1000};
-  balance = data.balance;
-  seed = crypto.randomUUID();
-  save();
-  document.getElementById("login").classList.add("hidden");
-  document.getElementById("casino").classList.remove("hidden");
-}
+    // Lights
+    const keyLight = new THREE.PointLight(0xffffff, 2);
+    keyLight.position.set(5, 5, 5);
+    scene.add(keyLight);
 
-/* ======================
-   PROVABLY FAIR
-====================== */
-function fairRandom() {
-  let hash = crypto.subtle.digest("SHA-256", new TextEncoder().encode(seed));
-  seed = crypto.randomUUID();
-  return Math.random();
-}
+    const fillLight = new THREE.AmbientLight(0xffffff, 0.35);
+    scene.add(fillLight);
 
-/* ======================
-   SAVE / UI
-====================== */
-function save() {
-  localStorage.setItem(user, JSON.stringify({balance}));
-  document.getElementById("balance").innerText = `Balance: $${balance}`;
-  document.getElementById("hash").innerText = `Seed: ${seed.slice(0,8)}...`;
-}
+    // Resize handling
+    window.addEventListener("resize", () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
 
-function show(id) {
-  document.querySelectorAll(".card.hidden").forEach(d=>d.classList.add("hidden"));
-  document.getElementById(id).classList.remove("hidden");
-}
+    // Animation loop
+    function animate() {
+      requestAnimationFrame(animate);
 
-/* ======================
-   ROULETTE (CANVAS)
-====================== */
-const wheel = document.getElementById("wheel");
-const wctx = wheel.getContext("2d");
-let angle = 0;
+      cube.rotation.x += 0.01;
+      cube.rotation.y += 0.012;
 
-function drawWheel() {
-  wctx.clearRect(0,0,300,300);
-  for(let i=0;i<37;i++){
-    wctx.beginPath();
-    wctx.moveTo(150,150);
-    wctx.arc(150,150,140,angle+i*0.17,angle+(i+1)*0.17);
-    wctx.fillStyle=i%2?"red":"black";
-    wctx.fill();
-  }
-}
-
-function spinRoulette() {
-  if(balance<100) return;
-  balance-=100;
-  document.getElementById("spinSound").play();
-  let spins=0;
-  let interval=setInterval(()=>{
-    angle+=0.2;
-    drawWheel();
-    spins++;
-    if(spins>40){
-      clearInterval(interval);
-      let win=Math.floor(Math.random()*37)%2===0;
-      if(win){balance+=200;document.getElementById("winSound").play();}
-      save();
+      renderer.render(scene, camera);
     }
-  },30);
-}
 
-/* ======================
-   CRASH GRAPH
-====================== */
-const graph=document.getElementById("graph");
-const gctx=graph.getContext("2d");
-
-function startCrash() {
-  if(balance<50) return;
-  balance-=50;
-  let x=0,y=200,m=1;
-  let crash=Math.random()*5+1;
-  gctx.clearRect(0,0,300,200);
-
-  let interval=setInterval(()=>{
-    x+=3;
-    m+=0.05;
-    y=200-(m*30);
-    gctx.lineTo(x,y);
-    gctx.strokeStyle="#00ffd5";
-    gctx.stroke();
-    if(m>=crash){
-      clearInterval(interval);
-      save();
-    }
-  },30);
-}
-</script>
+    animate();
+  </script>
 
 </body>
 </html>
