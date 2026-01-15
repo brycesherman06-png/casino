@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Virtual Casino</title>
+<link rel="stylesheet" href="style.css">
+<style>
+body {
+    margin: 0;
+    background: linear-gradient(135deg, #111, #000);
+    color: white;
+    font-family: Arial;
+    text-align: center;
+}
+button {
+    background: gold;
+    border: none;
+    padding: 12px 20px;
+    margin: 6px;
+    font-size: 16px;
+    cursor: pointer;
+}
+button:hover { background: orange; }
+.game { display: none; margin-top: 20px; }
+#balance { font-size: 22px; margin: 10px; }
+</style>
+</head>
+
+<body>
+
+<h1>🎰 Virtual Casino</h1>
+<div id="balance">Balance: $1000</div>
+
+<button onclick="showGame('slots')">Slots</button>
+<button onclick="showGame('roulette')">Roulette</button>
+<button onclick="showGame('blackjack')">Blackjack</button>
+<button onclick="showGame('crash')">Crash</button>
+<button onclick="showGame('plinko')">Plinko</button>
+
+<div id="slots" class="game">
+<h2>Slots</h2>
+<div id="slotReels">🎰 ? ? ?</div>
+<button onclick="spinSlots()">Spin ($50)</button>
+</div>
+
+<div id="roulette" class="game">
+<h2>Roulette</h2>
+<button onclick="spinRoulette()">Spin ($100)</button>
+</div>
+
+<div id="blackjack" class="game">
+<h2>Blackjack</h2>
+<button onclick="playBlackjack()">Deal ($100)</button>
+</div>
+
+<div id="crash" class="game">
+<h2>Crash</h2>
+<button onclick="playCrash()">Start ($50)</button>
+</div>
+
+<div id="plinko" class="game">
+<h2>Plinko</h2>
+<button onclick="dropPlinko()">Drop ($25)</button>
+</div>
+
+<script>
+let balance = 1000;
+
+function updateBalance(amount) {
+    balance += amount;
+    document.getElementById("balance").innerText = `Balance: $${balance}`;
+}
+
+function showGame(id) {
+    document.querySelectorAll(".game").forEach(g => g.style.display = "none");
+    document.getElementById(id).style.display = "block";
+}
+
+function spinSlots() {
+    if (balance < 50) return;
+    updateBalance(-50);
+    let a = Math.floor(Math.random()*5);
+    let b = Math.floor(Math.random()*5);
+    let c = Math.floor(Math.random()*5);
+    document.getElementById("slotReels").innerText = `🎰 ${a} ${b} ${c}`;
+    if (a===b && b===c) updateBalance(300);
+}
+
+function spinRoulette() {
+    if (balance < 100) return;
+    updateBalance(-100);
+    let n = Math.floor(Math.random()*37);
+    alert("Roulette landed on " + n);
+    if (n % 2 === 0) updateBalance(200);
+}
+
+function playBlackjack() {
+    if (balance < 100) return;
+    updateBalance(-100);
+    let p = 16 + Math.floor(Math.random()*6);
+    let d = 16 + Math.floor(Math.random()*6);
+    alert(`You: ${p} Dealer: ${d}`);
+    if (p > d || d > 21) updateBalance(200);
+}
+
+function playCrash() {
+    if (balance < 50) return;
+    updateBalance(-50);
+    let crash = 1 + Math.random()*5;
+    let cash = 1 + Math.random()*5;
+    alert(cash < crash ? `Cashed at ${cash.toFixed(2)}x` : `Crashed at ${crash.toFixed(2)}x`);
+    if (cash < crash) updateBalance(Math.floor(50 * cash));
+}
+
+function dropPlinko() {
+    if (balance < 25) return;
+    updateBalance(-25);
+    let payouts = [0,10,25,50,100];
+    let win = payouts[Math.floor(Math.random()*payouts.length)];
+    updateBalance(win);
+    alert("Plinko payout: $" + win);
+}
+</script>
+
+</body>
+</html>
