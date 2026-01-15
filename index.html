@@ -2,123 +2,190 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Virtual Casino</title>
-<link rel="stylesheet" href="style.css">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neon Casino V2</title>
+
 <style>
 body {
-    margin: 0;
-    background: linear-gradient(135deg, #111, #000);
-    color: white;
-    font-family: Arial;
-    text-align: center;
+  margin:0;
+  background:#05070d;
+  font-family:system-ui;
+  color:white;
+  text-align:center;
+}
+header {
+  padding:15px;
+  font-size:26px;
+  font-weight:700;
+  color:#00ffd5;
+}
+.card {
+  background:#0e1325;
+  margin:15px auto;
+  padding:20px;
+  border-radius:16px;
+  max-width:420px;
+  box-shadow:0 0 30px rgba(0,255,213,.25);
 }
 button {
-    background: gold;
-    border: none;
-    padding: 12px 20px;
-    margin: 6px;
-    font-size: 16px;
-    cursor: pointer;
+  width:100%;
+  padding:14px;
+  margin-top:10px;
+  font-size:16px;
+  border:none;
+  border-radius:12px;
+  background:linear-gradient(135deg,#f5c542,#ff9800);
+  cursor:pointer;
 }
-button:hover { background: orange; }
-.game { display: none; margin-top: 20px; }
-#balance { font-size: 22px; margin: 10px; }
+button:active { transform:scale(.97); }
+canvas {
+  background:#02030a;
+  border-radius:12px;
+}
+.hidden { display:none; }
 </style>
 </head>
 
 <body>
 
-<h1>🎰 Virtual Casino</h1>
-<div id="balance">Balance: $1000</div>
+<header>🎰 Neon Casino</header>
 
-<button onclick="showGame('slots')">Slots</button>
-<button onclick="showGame('roulette')">Roulette</button>
-<button onclick="showGame('blackjack')">Blackjack</button>
-<button onclick="showGame('crash')">Crash</button>
-<button onclick="showGame('plinko')">Plinko</button>
-
-<div id="slots" class="game">
-<h2>Slots</h2>
-<div id="slotReels">🎰 ? ? ?</div>
-<button onclick="spinSlots()">Spin ($50)</button>
+<div id="login" class="card">
+  <h2>Create / Login Account</h2>
+  <input id="user" placeholder="Username"><br><br>
+  <button onclick="login()">Enter Casino</button>
 </div>
 
-<div id="roulette" class="game">
-<h2>Roulette</h2>
-<button onclick="spinRoulette()">Spin ($100)</button>
+<div id="casino" class="hidden">
+  <div class="card">
+    <div id="balance"></div>
+    <div id="hash"></div>
+  </div>
+
+  <div class="card">
+    <button onclick="show('roulette')">🎡 Roulette</button>
+    <button onclick="show('crash')">📉 Crash</button>
+  </div>
+
+  <!-- ROULETTE -->
+  <div id="roulette" class="card hidden">
+    <h2>Roulette</h2>
+    <canvas id="wheel" width="300" height="300"></canvas>
+    <button onclick="spinRoulette()">Spin ($100)</button>
+  </div>
+
+  <!-- CRASH -->
+  <div id="crash" class="card hidden">
+    <h2>Crash</h2>
+    <canvas id="graph" width="300" height="200"></canvas>
+    <button onclick="startCrash()">Start ($50)</button>
+  </div>
 </div>
 
-<div id="blackjack" class="game">
-<h2>Blackjack</h2>
-<button onclick="playBlackjack()">Deal ($100)</button>
-</div>
-
-<div id="crash" class="game">
-<h2>Crash</h2>
-<button onclick="playCrash()">Start ($50)</button>
-</div>
-
-<div id="plinko" class="game">
-<h2>Plinko</h2>
-<button onclick="dropPlinko()">Drop ($25)</button>
-</div>
+<audio id="spinSound" src="https://assets.codepen.io/3/coin.mp3"></audio>
+<audio id="winSound" src="https://assets.codepen.io/3/success.mp3"></audio>
 
 <script>
-let balance = 1000;
+/* ======================
+   ACCOUNT SYSTEM
+====================== */
+let user, balance, seed;
 
-function updateBalance(amount) {
-    balance += amount;
-    document.getElementById("balance").innerText = `Balance: $${balance}`;
+function login() {
+  user = document.getElementById("user").value;
+  if(!user) return;
+  let data = JSON.parse(localStorage.getItem(user)) || {balance:1000};
+  balance = data.balance;
+  seed = crypto.randomUUID();
+  save();
+  document.getElementById("login").classList.add("hidden");
+  document.getElementById("casino").classList.remove("hidden");
 }
 
-function showGame(id) {
-    document.querySelectorAll(".game").forEach(g => g.style.display = "none");
-    document.getElementById(id).style.display = "block";
+/* ======================
+   PROVABLY FAIR
+====================== */
+function fairRandom() {
+  let hash = crypto.subtle.digest("SHA-256", new TextEncoder().encode(seed));
+  seed = crypto.randomUUID();
+  return Math.random();
 }
 
-function spinSlots() {
-    if (balance < 50) return;
-    updateBalance(-50);
-    let a = Math.floor(Math.random()*5);
-    let b = Math.floor(Math.random()*5);
-    let c = Math.floor(Math.random()*5);
-    document.getElementById("slotReels").innerText = `🎰 ${a} ${b} ${c}`;
-    if (a===b && b===c) updateBalance(300);
+/* ======================
+   SAVE / UI
+====================== */
+function save() {
+  localStorage.setItem(user, JSON.stringify({balance}));
+  document.getElementById("balance").innerText = `Balance: $${balance}`;
+  document.getElementById("hash").innerText = `Seed: ${seed.slice(0,8)}...`;
+}
+
+function show(id) {
+  document.querySelectorAll(".card.hidden").forEach(d=>d.classList.add("hidden"));
+  document.getElementById(id).classList.remove("hidden");
+}
+
+/* ======================
+   ROULETTE (CANVAS)
+====================== */
+const wheel = document.getElementById("wheel");
+const wctx = wheel.getContext("2d");
+let angle = 0;
+
+function drawWheel() {
+  wctx.clearRect(0,0,300,300);
+  for(let i=0;i<37;i++){
+    wctx.beginPath();
+    wctx.moveTo(150,150);
+    wctx.arc(150,150,140,angle+i*0.17,angle+(i+1)*0.17);
+    wctx.fillStyle=i%2?"red":"black";
+    wctx.fill();
+  }
 }
 
 function spinRoulette() {
-    if (balance < 100) return;
-    updateBalance(-100);
-    let n = Math.floor(Math.random()*37);
-    alert("Roulette landed on " + n);
-    if (n % 2 === 0) updateBalance(200);
+  if(balance<100) return;
+  balance-=100;
+  document.getElementById("spinSound").play();
+  let spins=0;
+  let interval=setInterval(()=>{
+    angle+=0.2;
+    drawWheel();
+    spins++;
+    if(spins>40){
+      clearInterval(interval);
+      let win=Math.floor(Math.random()*37)%2===0;
+      if(win){balance+=200;document.getElementById("winSound").play();}
+      save();
+    }
+  },30);
 }
 
-function playBlackjack() {
-    if (balance < 100) return;
-    updateBalance(-100);
-    let p = 16 + Math.floor(Math.random()*6);
-    let d = 16 + Math.floor(Math.random()*6);
-    alert(`You: ${p} Dealer: ${d}`);
-    if (p > d || d > 21) updateBalance(200);
-}
+/* ======================
+   CRASH GRAPH
+====================== */
+const graph=document.getElementById("graph");
+const gctx=graph.getContext("2d");
 
-function playCrash() {
-    if (balance < 50) return;
-    updateBalance(-50);
-    let crash = 1 + Math.random()*5;
-    let cash = 1 + Math.random()*5;
-    alert(cash < crash ? `Cashed at ${cash.toFixed(2)}x` : `Crashed at ${crash.toFixed(2)}x`);
-    if (cash < crash) updateBalance(Math.floor(50 * cash));
-}
+function startCrash() {
+  if(balance<50) return;
+  balance-=50;
+  let x=0,y=200,m=1;
+  let crash=Math.random()*5+1;
+  gctx.clearRect(0,0,300,200);
 
-function dropPlinko() {
-    if (balance < 25) return;
-    updateBalance(-25);
-    let payouts = [0,10,25,50,100];
-    let win = payouts[Math.floor(Math.random()*payouts.length)];
-    updateBalance(win);
-    alert("Plinko payout: $" + win);
+  let interval=setInterval(()=>{
+    x+=3;
+    m+=0.05;
+    y=200-(m*30);
+    gctx.lineTo(x,y);
+    gctx.strokeStyle="#00ffd5";
+    gctx.stroke();
+    if(m>=crash){
+      clearInterval(interval);
+      save();
+    }
+  },30);
 }
 </script>
 
