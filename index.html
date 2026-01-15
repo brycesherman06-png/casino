@@ -1,25 +1,20 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>3D Casino Lobby</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>3D Casino</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
+
 <body>
-  <div id="hud">
-    <div class="brand">NEON CASINO</div>
-    <div class="hint" id="hint">Click to lock mouse • WASD/Arrows to move • Shift to sprint • E to interact</div>
-    <div class="status" id="status">Loading…</div>
-  </div>
+  <div id="overlay">Click to enter</div>
+  <canvas id="c"></canvas>
 
-  <div id="crosshair">+</div>
-
-  <!-- Three.js (global THREE) -->
-  <script src="libs/three.min.js"></script>
-
-  <!-- Lobby + movement -->
-  <script src="lobby.js"></script>
+  <!-- SCRIPTS: ORDER MATTERS -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/cannon@0.6.2/build/cannon.min.js"></script>
   <script src="main.js"></script>
 </body>
 </html>
