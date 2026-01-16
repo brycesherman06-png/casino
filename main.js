@@ -1,15 +1,14 @@
 /* ============================================================
    BELLAGIO / OCEAN'S-11 STYLE CASINO — GAMES FIRST (ONE FILE)
-   - Smooth luxury graphics, warm lighting
-   - Realistic scale tables/machines
-   - Readable games: labels + felt/layout + slot cabinet display
-   - Playable rules: Roulette (EU), Blackjack, Slots
-   - Cinematic actions: UI → camera pan → watch game → win/loss → return
-   - NPC crowd with hair/body variation + wandering
-   - 120Hz fixed simulation step (render at display refresh)
+   - Updated: GTA4-inspired visual tuning (warm, high-def, PBR feel)
+   - Increased simulation fidelity to 144 Hz (SIM_DT) for smooth physics
+   - Higher-res canvas textures (default 1024) for more readable UI
+   - Games embedded in floor (no big stands) so they are easier to walk to
+   - Interaction now distance-based (more efficient navigation)
+   - Tweaked player movement for snappier, more responsive navigation
    ============================================================ */
 
-console.log("Casino main.js loaded ✅");
+console.log("Casino main.js loaded ✅ (updated visuals / 144Hz sim)");
 
 /* ---------------------- Error helpers ---------------------- */
 window.addEventListener("error", (e) => console.error("JS ERROR:", e.message, e.filename, e.lineno));
@@ -22,7 +21,7 @@ const overlay = document.getElementById("overlay");
 (function injectCSS(){
   const css = `
     html, body { margin:0; height:100%; overflow:hidden; background:#05040a; }
-    #c { width:100vw; height:100vh; display:block; }
+    #c { width:100vw; height:100vh; display:block; image-rendering: auto; }
     #overlay{
       position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
       background:rgba(0,0,0,.72); color:#fff; z-index:9999; cursor:pointer;
@@ -132,7 +131,7 @@ prompt.textContent = "Press E to play";
 document.body.appendChild(prompt);
 
 /* ------------------------- Audio --------------------------- */
-/* Generated wavs so you don't need files */
+/* Generated wavs so you don't need files (unchanged) */
 function wavDataURIFromMonoFloat(samples, sampleRate = 44100) {
   const n = samples.length;
   const bytesPerSample = 2;
@@ -242,11 +241,12 @@ const renderer = new THREE.WebGLRenderer({
   antialias: true,
   powerPreference: "high-performance"
 });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+// Allow high pixel density for "high-def" look, clamp to reasonable cap
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2.5));
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.05;
+renderer.toneMappingExposure = 1.08;
 renderer.physicallyCorrectLights = true;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -254,11 +254,12 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x06050a);
 
-const camera = new THREE.PerspectiveCamera(70, innerWidth/innerHeight, 0.1, 300);
+const camera = new THREE.PerspectiveCamera(70, innerWidth/innerHeight, 0.08, 400);
 camera.rotation.order = "YXZ";
 
 /* ----------------- Helpers: textures ----------------------- */
-function canvasTex(drawFn, size=512){
+/* Default texture size bumped to 1024 for higher-definition canvas textures */
+function canvasTex(drawFn, size=1024){
   const c = document.createElement("canvas");
   c.width = c.height = size;
   const g = c.getContext("2d");
@@ -266,7 +267,7 @@ function canvasTex(drawFn, size=512){
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.anisotropy = 8;
+  t.anisotropy = Math.min(16, renderer.capabilities.getMaxAnisotropy());
   return t;
 }
 function easeInOutCubic(t){ return t<0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2; }
@@ -281,59 +282,59 @@ const WORLD = {
 
 const wallTex = canvasTex((g,s)=>{
   g.fillStyle="#f3efe7"; g.fillRect(0,0,s,s); // ivory base
-  // paneling
-  for (let y=0;y<s;y+=96){
-    for (let x=0;x<s;x+=96){
-      g.fillStyle = ((x+y)/96)%2 ? "#efe8dd" : "#f7f2ea";
-      g.fillRect(x+8,y+10,80,76);
-      g.strokeStyle="rgba(0,0,0,0.07)";
-      g.lineWidth=3;
-      g.strokeRect(x+12,y+14,72,68);
+  // paneling (tighter, grittier like GTA4 interior trim)
+  for (let y=0;y<s;y+=128){
+    for (let x=0;x<s;x+=128){
+      g.fillStyle = ((x+y)/128)%2 ? "#efe8dd" : "#f7f2ea";
+      g.fillRect(x+8,y+10,112,106);
+      g.strokeStyle="rgba(0,0,0,0.06)";
+      g.lineWidth=4;
+      g.strokeRect(x+12,y+14,104,98);
     }
   }
   // subtle vertical texture
   g.fillStyle="rgba(0,0,0,0.03)";
-  for (let i=0;i<s;i+=18) g.fillRect(i,0,2,s);
-}, 512);
+  for (let i=0;i<s;i+=22) g.fillRect(i,0,1,s);
+}, 1024);
 wallTex.repeat.set(3.2, 1.4);
 
 const carpetTex = canvasTex((g,s)=>{
-  g.fillStyle="#5b0f1c"; g.fillRect(0,0,s,s); // burgundy
+  g.fillStyle="#54111a"; g.fillRect(0,0,s,s); // slightly deeper burgundy
   // classic pattern
-  for (let y=0;y<s;y+=36){
-    for (let x=0;x<s;x+=36){
-      const on = ((x/36 + y/36) % 2)===0;
+  for (let y=0;y<s;y+=48){
+    for (let x=0;x<s;x+=48){
+      const on = ((x/48 + y/48) % 2)===0;
       g.fillStyle = on ? "#6a1121" : "#4d0d18";
-      g.fillRect(x,y,36,36);
+      g.fillRect(x,y,48,48);
       g.fillStyle="rgba(255,212,43,0.16)"; // gold dots
-      g.beginPath(); g.arc(x+18,y+18,3,0,Math.PI*2); g.fill();
+      g.beginPath(); g.arc(x+24,y+24,3.5,0,Math.PI*2); g.fill();
     }
   }
-}, 512);
+}, 1024);
 carpetTex.repeat.set(6.5, 6.0);
 
 const marbleTex = canvasTex((g,s)=>{
-  g.fillStyle="#14141a"; g.fillRect(0,0,s,s); // black marble base
-  for (let i=0;i<260;i++){
-    g.strokeStyle=`rgba(255,255,255,${0.015 + Math.random()*0.05})`;
+  g.fillStyle="#111116"; g.fillRect(0,0,s,s);
+  for (let i=0;i<420;i++){
+    g.strokeStyle=`rgba(255,255,255,${0.01 + Math.random()*0.05})`;
     g.lineWidth=1 + Math.random()*2;
     g.beginPath();
     const x=Math.random()*s, y=Math.random()*s;
     g.moveTo(x,y);
     g.bezierCurveTo(
-      x+(-80+Math.random()*160), y+(-80+Math.random()*160),
-      x+(-80+Math.random()*160), y+(-80+Math.random()*160),
-      x+(-120+Math.random()*240), y+(-120+Math.random()*240)
+      x+(-100+Math.random()*200), y+(-100+Math.random()*200),
+      x+(-100+Math.random()*200), y+(-100+Math.random()*200),
+      x+(-160+Math.random()*320), y+(-160+Math.random()*320)
     );
     g.stroke();
   }
   // subtle sheen banding
   g.fillStyle="rgba(255,255,255,0.03)";
-  for (let i=0;i<s;i+=48) g.fillRect(0,i,s,8);
-}, 512);
+  for (let i=0;i<s;i+=64) g.fillRect(0,i,s,10);
+}, 1024);
 marbleTex.repeat.set(4.0, 4.0);
 
-const goldMat = new THREE.MeshStandardMaterial({ color: 0xb58a2a, roughness: 0.28, metalness: 0.90 });
+const goldMat = new THREE.MeshStandardMaterial({ color: 0xb58a2a, roughness: 0.28, metalness: 0.95 });
 const ivoryWallMat = new THREE.MeshStandardMaterial({ map: wallTex, roughness: 0.92, metalness: 0.02, side: THREE.BackSide });
 const carpetMat = new THREE.MeshStandardMaterial({ map: carpetTex, roughness: 0.98, metalness: 0.0 });
 const marbleMat = new THREE.MeshStandardMaterial({ map: marbleTex, roughness: 0.18, metalness: 0.10 });
@@ -429,17 +430,16 @@ function makePaintingTex(seed){
     grad.addColorStop(1, "rgba(120,30,40,0.35)");
     g.fillStyle = grad; g.fillRect(0,0,sz,sz);
 
-    for (let i=0;i<90;i++){
-      const x=rnd()*sz, y=rnd()*sz, w=20+rnd()*120, h=10+rnd()*90;
+    for (let i=0;i<120;i++){
+      const x=rnd()*sz, y=rnd()*sz, w=24+rnd()*160, h=12+rnd()*90;
       g.fillStyle=`rgba(${140+rnd()*90|0},${70+rnd()*80|0},${40+rnd()*60|0},${0.08+rnd()*0.20})`;
       g.fillRect(x,y,w,h);
     }
     g.strokeStyle="rgba(0,0,0,0.25)";
     g.lineWidth=10; g.strokeRect(12,12,sz-24,sz-24);
-  }, 512);
+  }, 1024);
 }
 function addPaintingOnWall(side, x, y, z, label){
-  // side: "left" "right" "back" "front"
   const tex = makePaintingTex((Math.random()*1e9)|0);
   const frame = new THREE.Mesh(
     new THREE.BoxGeometry(2.6, 1.8, 0.08),
@@ -513,12 +513,12 @@ for (let x=-18; x<=18; x+=12){
   }
 }
 
-/* Lighting: warm luxury (few colored accents) */
-scene.add(new THREE.AmbientLight(0xffffff, 0.05));
-scene.add(new THREE.HemisphereLight(0xfff2d2, 0x120b10, 0.12));
+/* Lighting: tuned for warm GTA4-like interior (soft, contrast, local fills) */
+scene.add(new THREE.AmbientLight(0xffffff, 0.06));
+scene.add(new THREE.HemisphereLight(0xfff2d2, 0x0e0b0d, 0.16));
 
-const key = new THREE.SpotLight(0xfff2d2, 800, 80, Math.PI/6, 0.55, 1.15);
-key.position.set(0, WORLD.H+6, 6);
+const key = new THREE.SpotLight(0xfff2d2, 900, 100, Math.PI/6, 0.5, 1.05);
+key.position.set(0, WORLD.H+8, 6);
 key.target.position.set(0, 0, -2);
 key.castShadow = true;
 key.shadow.mapSize.set(2048,2048);
@@ -527,7 +527,7 @@ scene.add(key, key.target);
 function addCeilingPanel(x,z){
   const panel = new THREE.Mesh(
     new THREE.PlaneGeometry(6.5, 3.0),
-    new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff2c6, emissiveIntensity: 0.55, roughness: 0.95 })
+    new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff2c6, emissiveIntensity: 0.65, roughness: 0.95 })
   );
   panel.rotation.x = Math.PI/2;
   panel.position.set(x, WORLD.H-0.06, z);
@@ -583,8 +583,8 @@ document.addEventListener("pointerlockchange", ()=>{
 
 let yaw=0, pitch=0;
 const pitchLimit = Math.PI/2 - 0.08;
-// Sensitivity: “up a lot but not too much”
-const MOUSE_SENS = 0.0038;
+// Sensitivity tuned a little tighter
+const MOUSE_SENS = 0.0032;
 
 function canLookMove(){
   return started && locked && !UI.anyOpen() && !CIN.active;
@@ -602,10 +602,11 @@ const player = {
   pos: new THREE.Vector3(0, 1.75, 20),
   vel: new THREE.Vector3(),
   eye: 1.75,
-  walk: 4.6,
-  sprint: 6.8,
-  accel: 22,
-  friction: 16
+  // slight increase for snappier navigation
+  walk: 5.4,
+  sprint: 8.6,
+  accel: 30,
+  friction: 18
 };
 camera.position.copy(player.pos);
 
@@ -647,9 +648,9 @@ function updateMovement(dt){
   player.pos.x += player.vel.x * dt;
   player.pos.z += player.vel.z * dt;
 
-  // Bounds inside room (leave 1m margin)
-  const bx = WORLD.W/2 - 1.2;
-  const bz = WORLD.D/2 - 1.2;
+  // Bounds inside room (leave 0.8m margin to make navigation feel less constrained)
+  const bx = WORLD.W/2 - 0.8;
+  const bz = WORLD.D/2 - 0.8;
   player.pos.x = THREE.MathUtils.clamp(player.pos.x, -bx, bx);
   player.pos.z = THREE.MathUtils.clamp(player.pos.z, -bz, bz);
 
@@ -815,34 +816,34 @@ const CIN = {
 /* --------------------- Labels / Sprites -------------------- */
 function makeLabelSprite(text, accent="#ffd42b"){
   const c = document.createElement("canvas");
-  c.width = 512; c.height = 128;
+  c.width = 1024; c.height = 256;
   const g = c.getContext("2d");
 
   g.fillStyle = "rgba(0,0,0,0.62)";
-  g.fillRect(0,0,512,128);
+  g.fillRect(0,0,1024,256);
 
   g.fillStyle = accent;
-  g.fillRect(0,0,512,6);
-  g.fillRect(0,122,512,6);
-  g.fillRect(0,0,6,128);
-  g.fillRect(506,0,6,128);
+  g.fillRect(0,0,1024,12);
+  g.fillRect(0,244,1024,12);
+  g.fillRect(0,0,12,256);
+  g.fillRect(1012,0,12,256);
 
-  g.fillStyle = "rgba(255,255,255,0.10)";
-  g.fillRect(12, 16, 488, 4);
+  g.fillStyle = "rgba(255,255,255,0.12)";
+  g.fillRect(24, 32, 976, 8);
 
   g.fillStyle = "#fff";
-  g.font = "1000 56px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  g.font = "1000 112px system-ui, -apple-system, Segoe UI, Roboto, Arial";
   g.textAlign = "center";
   g.textBaseline = "middle";
-  g.fillText(text, 256, 64);
+  g.fillText(text, 512, 128);
 
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 8;
+  tex.anisotropy = Math.min(16, renderer.capabilities.getMaxAnisotropy());
 
   const mat = new THREE.SpriteMaterial({ map: tex, transparent:true });
   const s = new THREE.Sprite(mat);
-  s.scale.set(4.4, 1.1, 1);
+  s.scale.set(6.0, 1.5, 1);
   return s;
 }
 
@@ -858,9 +859,8 @@ function addInteractable(obj, type, ref){
 /* ------------------------- FX ------------------------------ */
 const FX = {
   items: [],
-  // small chip burst
   chipBurst(pos){
-    for (let i=0;i<10;i++){
+    for (let i=0;i<12;i++){
       const chip = new THREE.Mesh(
         new THREE.CylinderGeometry(0.07,0.07,0.02,18),
         new THREE.MeshStandardMaterial({ color: 0xffd42b, roughness:0.35, metalness:0.35, emissive:0x000000 })
@@ -873,7 +873,7 @@ const FX = {
       FX.items.push({
         mesh: chip,
         vel: new THREE.Vector3((Math.random()-0.5)*1.2, 1.2 + Math.random()*1.2, (Math.random()-0.5)*1.2),
-        life: 1.2
+        life: 1.6
       });
     }
   },
@@ -915,7 +915,7 @@ const FX = {
       if (o.isLight && o.userData?._pulse){
         o.userData._pulseT += dt;
         const t = o.userData._pulseT;
-        o.intensity = o.userData._pulseBase * (1 + Math.sin(t*14)*0.25) + 20*Math.max(0, 1-t);
+        o.intensity = o.userData._pulseBase * (1 + Math.sin(t*14)*0.18) + 18*Math.max(0, 1-t);
         if (t > 0.6){
           o.intensity = o.userData._pulseBase;
           o.userData._pulse = false;
@@ -937,14 +937,13 @@ const FX = {
 /* ------------------------ NPC Crowd ------------------------ */
 const NPC = {
   list: [],
-  // “zones” NPCs like to visit
   zones: {
     roulette: { x:-18, z: 0, r: 4.5 },
     slots:    { x: 18, z: 0, r: 4.5 },
     bj:       { x:  0, z:-16, r: 4.5 },
     aisle:    { x:  0, z: 10, r: 10.0 },
   },
-  spawnCount: 18
+  spawnCount: 14 // slightly reduced for performance and navigation
 };
 
 function randBetween(a,b){ return a + Math.random()*(b-a); }
@@ -1084,7 +1083,6 @@ function pickZonePoint(zoneKey){
 }
 
 function respawnNPC(n){
-  // distribute nicely: some near each game, some aisle
   const zone = n.userData.prefer;
   const p = pickZonePoint(zone);
   n.position.set(p.x, 0, p.z);
@@ -1104,7 +1102,6 @@ function initNPCs(){
 initNPCs();
 
 function updateNPCs(dt){
-  // simple wander + separation
   const bx = WORLD.W/2 - 1.3;
   const bz = WORLD.D/2 - 1.3;
 
@@ -1121,11 +1118,10 @@ function updateNPCs(dt){
     u.leg1.rotation.x = Math.sin(u.t*w) * a*0.7;
     u.leg2.rotation.x = -Math.sin(u.t*w) * a*0.7;
 
-    if (CIN.active || UI.anyOpen()) continue; // freeze NPCs during cutscene/UI (keeps it clean)
+    if (CIN.active || UI.anyOpen()) continue; // freeze NPCs during cutscene/UI
 
     if (u.state === "idle"){
       u.idleTime -= dt;
-      // gentle look around
       n.rotation.y += Math.sin(u.t*0.8 + u.height)*0.002;
       if (u.idleTime <= 0){
         u.state = "wander";
@@ -1139,7 +1135,6 @@ function updateNPCs(dt){
     to.y = 0;
     const dist = to.length();
 
-    // occasional retarget
     if (dist < 0.6){
       u.state = "idle";
       u.idleTime = randBetween(1.0, 3.5);
@@ -1182,7 +1177,6 @@ function updateNPCs(dt){
 }
 
 /* ---------------------- Game Layout ------------------------ */
-/* Games-first: positioned to be obvious */
 const LAYOUT = {
   roulette: new THREE.Vector3(-18, 0,  0),
   slots:    new THREE.Vector3( 18, 0,  0),
@@ -1191,7 +1185,8 @@ const LAYOUT = {
 
 function addGameLabel(group, text, accent="#ffd42b"){
   const label = makeLabelSprite(text, accent);
-  label.position.set(0, 2.8, 0);
+  // labels slightly lower so they don't float awkwardly
+  label.position.set(0, 1.7, 0);
   group.add(label);
 }
 
@@ -1205,7 +1200,7 @@ const Roulette = {
   pendingNumber: 0,
   last: null,
   bet: 25,
-  betKind: "RED", // RED BLACK EVEN ODD LOW HIGH DOZEN1 DOZEN2 DOZEN3 STRAIGHT
+  betKind: "RED",
   straight: 17,
   uiMsg: "Choose a bet, then Spin.",
   actionInProgress: false
@@ -1221,23 +1216,12 @@ function buildRoulette(){
   Roulette.group.position.copy(LAYOUT.roulette);
   scene.add(Roulette.group);
 
-  // Table base (real-ish size): diameter ~1.6m, height ~0.95m
-  const base = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.82, 0.86, 0.95, 32),
-    woodMat
-  );
-  base.position.y = 0.475;
-  base.castShadow = base.receiveShadow = true;
-  Roulette.group.add(base);
+  // Embedded wheel (no big stand) — sits on a low floor plinth for accessibility
+  const basePlinth = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.06, 32), marbleMat);
+  basePlinth.position.y = 0.03;
+  Roulette.group.add(basePlinth);
 
-  // Felt top ring
-  const feltMat = new THREE.MeshStandardMaterial({ color: 0x0f5e3a, roughness:0.75, metalness:0.02, emissive:0x001a08, emissiveIntensity:0.10 });
-  const top = new THREE.Mesh(new THREE.CylinderGeometry(0.75,0.75,0.08,32), feltMat);
-  top.position.y = 0.95;
-  top.castShadow = top.receiveShadow = true;
-  Roulette.group.add(top);
-
-  // Wheel texture
+  // Wheel texture (higher-res)
   const wheelTex = canvasTex((g,s)=>{
     g.fillStyle="#111116"; g.fillRect(0,0,s,s);
     const cx=s/2, cy=s/2;
@@ -1254,7 +1238,7 @@ function buildRoulette(){
       const mid=(a0+a1)/2;
       const tx=cx + Math.cos(mid)*s*0.37;
       const ty=cy + Math.sin(mid)*s*0.37;
-      g.fillStyle="rgba(255,255,255,0.90)";
+      g.fillStyle="rgba(255,255,255,0.92)";
       g.fillRect((tx|0), (ty|0), 2, 2);
     }
     // center
@@ -1262,22 +1246,26 @@ function buildRoulette(){
     g.beginPath(); g.arc(cx,cy,s*0.08,0,Math.PI*2); g.fill();
     g.fillStyle="#b58a2a";
     g.beginPath(); g.arc(cx,cy,s*0.04,0,Math.PI*2); g.fill();
-  }, 512);
+    // subtle wear
+    g.fillStyle="rgba(255,255,255,0.02)";
+    g.beginPath(); g.ellipse(cx, cy, s*0.35, s*0.35, 0, 0, Math.PI*2); g.fill();
+  }, 1024);
   wheelTex.repeat.set(1,1);
 
   const wheel = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.45, 0.45, 0.08, 48),
-    new THREE.MeshStandardMaterial({ map: wheelTex, roughness:0.40, metalness:0.12 })
+    new THREE.CylinderGeometry(0.45, 0.45, 0.06, 64),
+    new THREE.MeshStandardMaterial({ map: wheelTex, roughness:0.32, metalness:0.18 })
   );
-  wheel.position.y = 1.03;
+  // lowered so it's easy to step up to — wheel top at about 0.38m
+  wheel.position.y = 0.38;
   wheel.castShadow = wheel.receiveShadow = true;
   Roulette.group.add(wheel);
   Roulette.wheel = wheel;
 
-  // Gold rim
-  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.48, 0.03, 14, 64), goldMat);
+  // slim gold rim (not big)
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.48, 0.02, 12, 64), goldMat);
   rim.rotation.x = Math.PI/2;
-  rim.position.y = 1.07;
+  rim.position.y = 0.405;
   Roulette.group.add(rim);
 
   // Ball (visual)
@@ -1286,64 +1274,59 @@ function buildRoulette(){
     new THREE.MeshStandardMaterial({ color: 0xf4f1ea, roughness:0.22, metalness:0.08 })
   );
   ball.castShadow = true;
-  ball.position.set(0.55, 1.07, 0);
+  ball.position.set(0.55, 0.41, 0);
   Roulette.group.add(ball);
   Roulette.ball = ball;
   Roulette.ballAng = 0;
   Roulette.ballRad = 0.55;
 
-  // Layout board next to wheel (readability)
+  // low-profile layout board: flat console beside wheel, readable
   const layoutTex = canvasTex((g,s)=>{
     g.fillStyle="#0f5e3a"; g.fillRect(0,0,s,s);
-    // simple rectangles for common bets
     g.strokeStyle="rgba(255,255,255,0.65)";
     g.lineWidth=6;
     g.strokeRect(18,18,s-36,s-36);
 
-    g.font="1000 42px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+    g.font="1000 36px system-ui, -apple-system, Segoe UI, Roboto, Arial";
     g.fillStyle="rgba(255,255,255,0.92)";
     g.fillText("ROULETTE", 36, 72);
 
-    g.font="900 30px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+    g.font="900 24px system-ui, -apple-system, Segoe UI, Roboto, Arial";
     g.fillStyle="rgba(255,255,255,0.85)";
-    g.fillText("RED / BLACK", 36, 132);
-    g.fillText("EVEN / ODD", 36, 176);
-    g.fillText("1-18 / 19-36", 36, 220);
-    g.fillText("DOZENS", 36, 264);
-    g.fillText("STRAIGHT", 36, 308);
+    g.fillText("RED / BLACK", 36, 122);
+    g.fillText("EVEN / ODD", 36, 156);
+    g.fillText("1-18 / 19-36", 36, 190);
+    g.fillText("DOZENS", 36, 224);
+    g.fillText("STRAIGHT", 36, 258);
 
     // accents
     g.fillStyle="rgba(181,138,42,0.55)";
     g.fillRect(18, s-42, s-36, 24);
-  }, 512);
+  }, 1024);
 
   const board = new THREE.Mesh(
-    new THREE.BoxGeometry(1.2, 0.05, 0.8),
-    new THREE.MeshStandardMaterial({ map: layoutTex, roughness:0.6, metalness:0.05 })
+    new THREE.PlaneGeometry(1.2, 0.8),
+    new THREE.MeshStandardMaterial({ map: layoutTex, roughness:0.6, metalness:0.05, side: THREE.DoubleSide })
   );
-  board.position.set(1.25, 0.95, 0.0);
-  board.rotation.y = -Math.PI/8;
-  board.castShadow = board.receiveShadow = true;
+  // place the board low and flat to the side; it's accessible and not a big upright frame
+  board.rotation.x = -Math.PI/2;
+  board.position.set(0.85, 0.04, 0.0);
   Roulette.group.add(board);
-
-  const boardFrame = new THREE.Mesh(new THREE.BoxGeometry(1.26,0.07,0.86), woodMat);
-  boardFrame.position.copy(board.position);
-  boardFrame.rotation.copy(board.rotation);
-  Roulette.group.add(boardFrame);
 
   // Label
   addGameLabel(Roulette.group, "ROULETTE", "#ffd42b");
 
-  // Interactable: use the wheel mesh (press E)
+  // Interactable: register the wheel mesh and the board (so players can interact at floor level)
   addInteractable(wheel, "roulette", Roulette);
+  addInteractable(board, "roulette", Roulette);
 
   // rim light
-  Roulette.rimLight.position.set(LAYOUT.roulette.x, 2.1, LAYOUT.roulette.z);
+  Roulette.rimLight.position.set(LAYOUT.roulette.x, 1.3, LAYOUT.roulette.z);
   scene.add(Roulette.rimLight);
 }
 buildRoulette();
 
-/* Roulette rules */
+/* Roulette rules (unchanged) */
 function roulettePayout(kind){
   if (kind === "STRAIGHT") return 35;
   if (kind.startsWith("DOZEN")) return 2;
@@ -1374,7 +1357,7 @@ const Slots = {
   light: new THREE.PointLight(0xffd42b, 90, 8, 2),
   reelStrips: [],
   reelIndex: [0,0,0],
-  screen: null, // { canvas, ctx, tex, mesh }
+  screen: null,
 };
 
 Slots.SYMBOLS = [
@@ -1405,16 +1388,7 @@ function buildSlots(){
   Slots.group.position.copy(LAYOUT.slots);
   scene.add(Slots.group);
 
-  // Slot bank: 3 machines
-  const bank = new THREE.Mesh(
-    new THREE.BoxGeometry(3.2, 1.0, 1.2),
-    woodMat
-  );
-  bank.position.set(0, 0.50, 0.0);
-  bank.castShadow = bank.receiveShadow = true;
-  Slots.group.add(bank);
-
-  // Machines
+  // Machines now sit on the floor accessible like real slot cabinets (no large bank)
   const machineMat = new THREE.MeshStandardMaterial({ color: 0x16161c, roughness:0.55, metalness:0.15 });
   const trim = new THREE.MeshStandardMaterial({ color: 0xb58a2a, roughness:0.35, metalness:0.75 });
   const emiss = new THREE.MeshStandardMaterial({ color: 0x1a1a1f, emissive:0xffd42b, emissiveIntensity:0.12, roughness:0.45 });
@@ -1422,16 +1396,16 @@ function buildSlots(){
   const positions = [-1.05, 0, 1.05];
   const machines = [];
 
-  // Screen (single big readable display above)
+  // Screen (bigger readability, above machines but lower overall)
   const sc = document.createElement("canvas");
-  sc.width=768; sc.height=256;
+  sc.width=1536; sc.height=512;
   const sg = sc.getContext("2d");
   const tex = new THREE.CanvasTexture(sc);
   tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 8;
+  tex.anisotropy = Math.min(16, renderer.capabilities.getMaxAnisotropy());
 
   const screenMat = new THREE.MeshStandardMaterial({ map: tex, emissive:0xffd42b, emissiveIntensity:0.08, roughness:0.45, metalness:0.05 });
-  const screenMesh = new THREE.Mesh(new THREE.PlaneGeometry(2.9, 0.95), screenMat);
+  const screenMesh = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 1.05), screenMat);
   screenMesh.position.set(0, 1.62, 0.61);
   Slots.group.add(screenMesh);
 
@@ -1439,64 +1413,64 @@ function buildSlots(){
 
   function drawSlots(a,b,c,msg){
     const g=sg;
-    g.clearRect(0,0,768,256);
-    g.fillStyle="rgba(0,0,0,0.75)"; g.fillRect(0,0,768,256);
+    g.clearRect(0,0,1536,512);
+    g.fillStyle="rgba(0,0,0,0.75)"; g.fillRect(0,0,1536,512);
 
-    const grad=g.createLinearGradient(0,0,768,0);
+    const grad=g.createLinearGradient(0,0,1536,0);
     grad.addColorStop(0,"rgba(181,138,42,0.45)");
     grad.addColorStop(1,"rgba(255,255,255,0.06)");
-    g.fillStyle=grad; g.fillRect(0,0,768,18);
+    g.fillStyle=grad; g.fillRect(0,0,1536,24);
 
     // windows
     g.strokeStyle="rgba(255,255,255,0.18)";
-    g.lineWidth=6;
-    const w=190,h=140;
-    const xs=[70, 289, 508];
+    g.lineWidth=8;
+    const w=360,h=260;
+    const xs=[150, 588, 1026];
     for (let i=0;i<3;i++){
       g.fillStyle="rgba(255,255,255,0.06)";
-      g.fillRect(xs[i], 56, w, h);
-      g.strokeRect(xs[i], 56, w, h);
+      g.fillRect(xs[i], 92, w, h);
+      g.strokeRect(xs[i], 92, w, h);
     }
 
     // symbols
     g.fillStyle="rgba(255,255,255,0.92)";
-    g.font="1000 96px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+    g.font="1000 178px system-ui, -apple-system, Segoe UI, Roboto, Arial";
     g.textAlign="center";
     g.textBaseline="middle";
-    g.fillText(a, xs[0]+w/2, 126);
-    g.fillText(b, xs[1]+w/2, 126);
-    g.fillText(c, xs[2]+w/2, 126);
+    g.fillText(a, xs[0]+w/2, 222);
+    g.fillText(b, xs[1]+w/2, 222);
+    g.fillText(c, xs[2]+w/2, 222);
 
     g.fillStyle="rgba(255,255,255,0.90)";
-    g.font="900 28px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+    g.font="900 46px system-ui, -apple-system, Segoe UI, Roboto, Arial";
     g.textAlign="left";
-    g.fillText(msg||"PRESS SPIN", 24, 228);
+    g.fillText(msg||"PRESS SPIN", 36, 462);
 
     tex.needsUpdate=true;
   }
 
-  // cabinets
+  // cabinets (floor-mounted)
   for (let i=0;i<3;i++){
-    const cab = new THREE.Mesh(new THREE.BoxGeometry(0.75, 1.80, 0.75), machineMat);
-    cab.position.set(positions[i], 0.90, -0.05);
+    const cab = new THREE.Mesh(new THREE.BoxGeometry(0.68, 1.22, 0.68), machineMat);
+    cab.position.set(positions[i], 0.61, -0.05);
     cab.castShadow = cab.receiveShadow = true;
     Slots.group.add(cab);
 
-    const bezel = new THREE.Mesh(new THREE.BoxGeometry(0.80, 1.86, 0.08), trim);
-    bezel.position.set(positions[i], 0.98, 0.33);
+    const bezel = new THREE.Mesh(new THREE.BoxGeometry(0.72, 1.28, 0.06), trim);
+    bezel.position.set(positions[i], 0.69, 0.33);
     Slots.group.add(bezel);
 
-    const panel = new THREE.Mesh(new THREE.BoxGeometry(0.70, 0.18, 0.10), emiss);
-    panel.position.set(positions[i], 0.35, 0.34);
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(0.60, 0.14, 0.10), emiss);
+    panel.position.set(positions[i], 0.32, 0.34);
     Slots.group.add(panel);
 
-    // “spin” button for interaction
+    // “spin” button for interaction (reachable)
     const btn = new THREE.Mesh(
       new THREE.CylinderGeometry(0.07,0.07,0.03,18),
       new THREE.MeshStandardMaterial({ color:0x101012, emissive:0xffd42b, emissiveIntensity:0.18, roughness:0.45 })
     );
     btn.rotation.x = Math.PI/2;
-    btn.position.set(positions[i]+0.24, 0.34, 0.40);
+    btn.position.set(positions[i]+0.24, 0.32, 0.40);
     Slots.group.add(btn);
 
     machines.push({ cab, btn });
@@ -1509,7 +1483,7 @@ function buildSlots(){
   // Interactable: any button opens Slots UI
   for (const m of machines) addInteractable(m.btn, "slots", Slots);
 
-  Slots.light.position.set(LAYOUT.slots.x, 2.1, LAYOUT.slots.z);
+  Slots.light.position.set(LAYOUT.slots.x, 1.6, LAYOUT.slots.z);
   scene.add(Slots.light);
 
   // strips
@@ -1537,14 +1511,13 @@ function evalSlots(a,b,c, bet){
 const Blackjack = {
   group: new THREE.Group(),
   bet: 25,
-  phase: "ready", // ready, player, dealer
+  phase: "ready",
   deck: [],
   player: [],
   dealer: [],
   canDouble: false,
   uiMsg: "Adjust bet, then Deal.",
   light: new THREE.PointLight(0xffd42b, 90, 8, 2),
-  // in-world cards as planes (for cutscene visibility)
   cardMeshes: { player: [], dealer: [] }
 };
 
@@ -1552,12 +1525,12 @@ function buildBlackjack(){
   Blackjack.group.position.copy(LAYOUT.bj);
   scene.add(Blackjack.group);
 
-  // Table: width ~2.2m, depth ~1.1m, height ~0.8m
+  // Table: lowered height (integrated, easier access)
   const base = new THREE.Mesh(
-    new THREE.BoxGeometry(2.25, 0.78, 1.15),
+    new THREE.BoxGeometry(2.25, 0.46, 1.15),
     woodMat
   );
-  base.position.y = 0.39;
+  base.position.y = 0.23;
   base.castShadow = base.receiveShadow = true;
   Blackjack.group.add(base);
 
@@ -1584,46 +1557,45 @@ function buildBlackjack(){
       g.arc(cx + i*s*0.18, cy, s*0.09, 0, Math.PI*2);
       g.stroke();
     }
-  }, 512);
+  }, 1024);
 
   const top = new THREE.Mesh(
-    new THREE.BoxGeometry(2.18, 0.06, 1.08),
+    new THREE.BoxGeometry(2.18, 0.04, 1.08),
     new THREE.MeshStandardMaterial({ map: feltTex, roughness:0.78, metalness:0.02, emissive:0x001a08, emissiveIntensity:0.10 })
   );
-  top.position.y = 0.78;
+  top.position.y = 0.46;
   top.castShadow = top.receiveShadow = true;
   Blackjack.group.add(top);
 
   // Dealer “chip tray” prop
   const tray = new THREE.Mesh(
-    new THREE.BoxGeometry(0.60, 0.06, 0.18),
+    new THREE.BoxGeometry(0.60, 0.04, 0.18),
     new THREE.MeshStandardMaterial({ color:0x1a1a1f, roughness:0.65, metalness:0.10 })
   );
-  tray.position.set(0, 0.82, -0.43);
+  tray.position.set(0, 0.48, -0.43);
   Blackjack.group.add(tray);
 
   addGameLabel(Blackjack.group, "BLACKJACK", "#ffd42b");
 
   addInteractable(top, "blackjack", Blackjack);
 
-  Blackjack.light.position.set(LAYOUT.bj.x, 2.1, LAYOUT.bj.z);
+  Blackjack.light.position.set(LAYOUT.bj.x, 1.6, LAYOUT.bj.z);
   scene.add(Blackjack.light);
 
   // create placeholder card planes for visibility
   function makeCardPlane(){
     const c = document.createElement("canvas");
-    c.width=256; c.height=356;
+    c.width=512; c.height=712;
     const g=c.getContext("2d");
-    // default back
-    g.fillStyle="#f7f2ea"; g.fillRect(0,0,256,356);
-    g.fillStyle="#b01822"; g.fillRect(10,10,236,336);
+    g.fillStyle="#f7f2ea"; g.fillRect(0,0,512,712);
+    g.fillStyle="#b01822"; g.fillRect(20,20,472,672);
     g.fillStyle="rgba(255,255,255,0.75)";
-    for (let i=0;i<8;i++) g.fillRect(20+i*28, 30, 12, 12);
+    for (let i=0;i<8;i++) g.fillRect(32+i*56, 60, 20, 20);
     const tex = new THREE.CanvasTexture(c);
     tex.colorSpace = THREE.SRGBColorSpace;
-    tex.anisotropy = 8;
+    tex.anisotropy = Math.min(16, renderer.capabilities.getMaxAnisotropy());
     const m = new THREE.MeshStandardMaterial({ map: tex, roughness:0.5, metalness:0.05 });
-    const p = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 0.17), m);
+    const p = new THREE.Mesh(new THREE.PlaneGeometry(0.14, 0.20), m);
     p.rotation.x = -Math.PI/2;
     p.castShadow = true;
     p.visible = false;
@@ -1631,12 +1603,12 @@ function buildBlackjack(){
   }
   for (let i=0;i<5;i++){
     const pc = makeCardPlane();
-    pc.plane.position.set(-0.30 + i*0.15, 0.81, 0.10);
+    pc.plane.position.set(-0.30 + i*0.15, 0.48, 0.10);
     Blackjack.group.add(pc.plane);
     Blackjack.cardMeshes.player.push(pc);
 
     const dc = makeCardPlane();
-    dc.plane.position.set(-0.30 + i*0.15, 0.81, -0.15);
+    dc.plane.position.set(-0.30 + i*0.15, 0.48, -0.15);
     Blackjack.group.add(dc.plane);
     Blackjack.cardMeshes.dealer.push(dc);
   }
@@ -1670,32 +1642,32 @@ function score(hand){
 }
 function drawCardCanvas(cardCanvasObj, card, faceDown=false){
   const g = cardCanvasObj.ctx;
-  g.clearRect(0,0,256,356);
+  g.clearRect(0,0,512,712);
 
   // card base
-  g.fillStyle="#f7f2ea"; g.fillRect(0,0,256,356);
+  g.fillStyle="#f7f2ea"; g.fillRect(0,0,512,712);
   g.strokeStyle="rgba(0,0,0,0.20)";
   g.lineWidth=6;
-  g.strokeRect(8,8,240,340);
+  g.strokeRect(16,16,480,680);
 
   if (faceDown){
-    g.fillStyle="#b01822"; g.fillRect(16,16,224,324);
+    g.fillStyle="#b01822"; g.fillRect(32,32,448,648);
     g.fillStyle="rgba(255,255,255,0.75)";
-    for (let i=0;i<10;i++) g.fillRect(24+i*22, 36, 10, 10);
+    for (let i=0;i<10;i++) g.fillRect(40+i*44, 72, 20, 20);
     cardCanvasObj.tex.needsUpdate=true;
     return;
   }
 
   const isRed = (card.s==="♥" || card.s==="♦");
   g.fillStyle = isRed ? "#b01822" : "#101012";
-  g.font="1000 54px system-ui, -apple-system, Segoe UI, Roboto, Arial";
-  g.fillText(card.r, 22, 64);
-  g.fillText(card.s, 22, 120);
+  g.font="1000 120px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  g.fillText(card.r, 32, 120);
+  g.fillText(card.s, 32, 200);
 
-  g.font="1000 130px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+  g.font="1000 260px system-ui, -apple-system, Segoe UI, Roboto, Arial";
   g.textAlign="center";
   g.textBaseline="middle";
-  g.fillText(card.s, 128, 205);
+  g.fillText(card.s, 256, 352);
 
   g.textAlign="left";
   cardCanvasObj.tex.needsUpdate=true;
@@ -1879,18 +1851,38 @@ function bjRefresh(msg){
 document.getElementById("b_up").onclick = ()=>{ if (Blackjack.phase!=="ready") return; Blackjack.bet = Economy.clampBet(Blackjack.bet+25); playChip(); bjRefresh(); };
 document.getElementById("b_down").onclick = ()=>{ if (Blackjack.phase!=="ready") return; Blackjack.bet = Economy.clampBet(Blackjack.bet-25); playChip(); bjRefresh(); };
 
-/* ------------------ Interaction (raycast + E) -------------- */
+/* ------------------ Interaction (distance + raycast) -------------- */
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 let currentHover = null;
+const INTERACT_RANGE = 3.2; // players can interact from a small distance; improved navigation
 
 function raycastCenter(){
-  // center of screen
+  // primary raycast still used for precision (center)
   mouse.x = 0;
   mouse.y = 0;
   raycaster.setFromCamera(mouse, camera);
   const hits = raycaster.intersectObjects(interactables, true);
   return hits.length ? hits[0].object : null;
+}
+
+function findNearbyInteractable(){
+  // faster friendly alternative: check proximity to each interactable's world position
+  const camPos = camera.position;
+  let best = null;
+  let bestDist = Infinity;
+  for (const obj of interactables){
+    // compute an approximate world position: prefer top-level parent position if available
+    let worldPos = new THREE.Vector3();
+    // try to get a bounding center if available
+    obj.getWorldPosition(worldPos);
+    const d = camPos.distanceTo(worldPos);
+    if (d < INTERACT_RANGE && d < bestDist){
+      bestDist = d;
+      best = obj;
+    }
+  }
+  return best;
 }
 
 function showPrompt(show, text="Press E to play"){
@@ -1910,7 +1902,12 @@ function openGame(type){
 
 function handleInteract(){
   if (!started || UI.anyOpen() || CIN.active) return;
-  const obj = raycastCenter();
+
+  // prefer a nearby object to enable easy navigation (you don't need to perfectly aim)
+  const nearby = findNearbyInteractable();
+  const rayObj = raycastCenter();
+
+  const obj = nearby || rayObj;
   if (!obj || !obj.userData.interactive) return;
   openGame(obj.userData.type);
 }
@@ -1923,9 +1920,7 @@ document.addEventListener("keydown", (ev)=>{
 
 /* ------------------ Cinematic presets per game ------------- */
 const CAM = {
-  // returns: { pos, look }
   rouletteAction(){
-    // slightly above and to the side, looking at wheel
     const base = LAYOUT.roulette;
     return {
       pos: new THREE.Vector3(base.x + 1.8, 1.85, base.z + 2.2),
@@ -1951,7 +1946,6 @@ const CAM = {
 /* ------------------ Action Pipeline (best practice) -------- */
 async function runCinematicAction({ uiName, camPresetFn, actionFn, onDoneMsgFn }){
   if (CIN.active) return;
-  // UI already open when button clicked
   const preset = camPresetFn();
   const prevState = UI.state;
 
@@ -1959,19 +1953,16 @@ async function runCinematicAction({ uiName, camPresetFn, actionFn, onDoneMsgFn }
     CIN.start({
       toPos: preset.pos,
       toLook: preset.look,
-      durIn: 0.75,
-      durOut: 0.75,
+      durIn: 0.7,
+      durOut: 0.7,
       onArrive: async ()=>{
-        // Run actual action while camera is on the game
         try{
           await actionFn();
         } finally {
-          // return
           CIN.returnToPlayer();
         }
       },
       onReturn: ()=>{
-        // Ensure UI still open (user might have closed)
         if (UI.state === prevState){
           UI.fadeInActive();
           if (onDoneMsgFn) onDoneMsgFn();
@@ -1997,12 +1988,10 @@ async function rouletteSpinAction(){
   playChip();
   SND.spin.play();
 
-  // choose uniform outcome
   Roulette.pendingNumber = (Math.random()*37)|0;
   Roulette.settleT = 2.4;
   Roulette.spinning = true;
 
-  // wait for settle
   await new Promise((res)=>{
     Roulette._resolve = res;
   });
@@ -2022,7 +2011,7 @@ function finishRoulette(){
     Economy.pay(Roulette.bet + profit);
     playWin();
     FX.winPulse(Roulette.rimLight);
-    FX.chipBurst(Roulette.group.localToWorld(new THREE.Vector3(0,1.15,0)));
+    FX.chipBurst(Roulette.group.localToWorld(new THREE.Vector3(0,0.6,0)));
     rouletteRefresh(`WIN! Result ${Roulette.last}. Profit +$${profit}.`);
   } else {
     SND.loss.play();
@@ -2086,7 +2075,7 @@ async function slotsSpinAction(){
     Economy.pay(b + result.profit);
     playWin();
     FX.winPulse(Slots.light);
-    FX.chipBurst(Slots.group.localToWorld(new THREE.Vector3(0,1.2,0.6)));
+    FX.chipBurst(Slots.group.localToWorld(new THREE.Vector3(0,0.9,0.6)));
     Slots.draw(a,bb,c,`${result.msg} • Profit +$${result.profit}`);
     slotsRefresh(`${result.msg} • Profit +$${result.profit}`);
   } else {
@@ -2146,11 +2135,9 @@ async function bjDealAction(){
   Blackjack.phase = "player";
   Blackjack.canDouble = true;
 
-  // show in-world
   bjShowHandsInWorld(true);
   bjRefresh("Your turn: Hit / Stand / Double.");
 
-  // blackjack checks
   const p = score(Blackjack.player);
   const d = score(Blackjack.dealer);
   const playerBJ = (p === 21);
@@ -2161,7 +2148,6 @@ async function bjDealAction(){
     bjShowHandsInWorld(false);
 
     if (playerBJ && !dealerBJ){
-      // pay 3:2 => total return = bet * 2.5
       Economy.pay(Math.floor(Blackjack.bet * 2.5));
       playWin();
       FX.winPulse(Blackjack.light);
@@ -2205,7 +2191,6 @@ function bjStand(){
   Blackjack.phase = "dealer";
   Blackjack.canDouble = false;
 
-  // dealer stands on 17
   while (score(Blackjack.dealer) < 17){
     Blackjack.dealer.push(Blackjack.deck.pop());
   }
@@ -2219,7 +2204,7 @@ function bjStand(){
     Economy.pay(Blackjack.bet*2);
     playWin();
     FX.winPulse(Blackjack.light);
-    FX.chipBurst(Blackjack.group.localToWorld(new THREE.Vector3(0,0.9,0.05)));
+    FX.chipBurst(Blackjack.group.localToWorld(new THREE.Vector3(0,0.6,0.05)));
     bjRefresh(`You win! Dealer ${d}. (+$${Blackjack.bet})`);
   } else if (p === d){
     Economy.pay(Blackjack.bet);
@@ -2298,6 +2283,16 @@ function updateHoverPrompt(){
     showPrompt(false);
     return;
   }
+
+  // prefer nearby interactable (distance-based) — much easier to navigate without pixel-perfect aim
+  const nearby = findNearbyInteractable();
+  if (nearby && nearby.userData.interactive){
+    showPrompt(true, "Press E to play");
+    currentHover = nearby;
+    return;
+  }
+
+  // fallback to center raycast for precise targets
   const obj = raycastCenter();
   if (obj && obj.userData.interactive){
     showPrompt(true, "Press E to play");
@@ -2310,28 +2305,25 @@ function updateHoverPrompt(){
 
 /* ---------------------- Roulette animation ----------------- */
 function updateRoulette(dt){
-  // subtle idle spin
   if (Roulette.wheel) Roulette.wheel.rotation.y += dt * (Roulette.spinning ? 6.0 : 0.25);
 
   if (!Roulette.spinning) {
-    // idle ball
     Roulette.ballAng += dt * 0.35;
     Roulette.ballRad = 0.55;
-    Roulette.ball.position.set(Math.cos(Roulette.ballAng)*Roulette.ballRad, 1.07, Math.sin(Roulette.ballAng)*Roulette.ballRad);
+    Roulette.ball.position.set(Math.cos(Roulette.ballAng)*Roulette.ballRad, 0.41, Math.sin(Roulette.ballAng)*Roulette.ballRad);
     return;
   }
 
   Roulette.settleT -= dt;
   Roulette.ballAng += dt * 10.0;
   Roulette.ballRad = approach(Roulette.ballRad, 0.40, dt * 0.18);
-  Roulette.ball.position.set(Math.cos(Roulette.ballAng)*Roulette.ballRad, 1.07, Math.sin(Roulette.ballAng)*Roulette.ballRad);
+  Roulette.ball.position.set(Math.cos(Roulette.ballAng)*Roulette.ballRad, 0.41, Math.sin(Roulette.ballAng)*Roulette.ballRad);
 
   if (Roulette.settleT <= 0){
-    // place ball near chosen pocket for clarity
     const n = Roulette.pendingNumber;
     const idx = Roulette.ORDER.indexOf(n);
     const a = (idx/37)*Math.PI*2;
-    Roulette.ball.position.set(Math.cos(a)*0.40, 1.07, Math.sin(a)*0.40);
+    Roulette.ball.position.set(Math.cos(a)*0.40, 0.41, Math.sin(a)*0.40);
 
     Roulette.spinning = false;
     finishRoulette();
@@ -2347,19 +2339,19 @@ function updateRoulette(dt){
 /* ---------------------- World polish updates ---------------- */
 function updateWorld(dt, t){
   for (const c of chandeliers){
-    c.rotation.y += dt * c.userData.spin * 0.4;
+    c.rotation.y += dt * c.userData.spin * 0.38;
     c.rotation.z = Math.sin(t*0.8 + c.userData.spin)*0.02;
   }
-  // gentle ambience pulsing near games
   accentRoulette.intensity = 120 + Math.sin(t*1.3)*12;
   accentSlots.intensity = 120 + Math.sin(t*1.2 + 1.2)*12;
   accentBJ.intensity = 120 + Math.sin(t*1.1 + 2.0)*12;
 }
 
-/* ---------------------- Main loop (120Hz sim) -------------- */
+/* ---------------------- Main loop (144Hz sim) -------------- */
 const clock = new THREE.Clock();
 let acc = 0;
-const SIM_DT = 1/120;
+// Target simulation Hz: 144 for very smooth internal updates
+const SIM_DT = 1/144;
 
 function simStep(dt, t){
   updateMovement(dt);
@@ -2378,8 +2370,9 @@ function animate(){
   const t = clock.elapsedTime;
   acc += frameDt;
 
+  // allow up to a few sim steps per frame to keep sim stable on variable framerates
   let steps=0;
-  while (acc >= SIM_DT && steps < 8){
+  while (acc >= SIM_DT && steps < 12){
     simStep(SIM_DT, t);
     acc -= SIM_DT;
     steps++;
@@ -2392,7 +2385,7 @@ animate();
 /* ---------------------- Resize ------------------------------ */
 addEventListener("resize", ()=>{
   renderer.setSize(innerWidth, innerHeight);
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2.5));
   camera.aspect = innerWidth/innerHeight;
   camera.updateProjectionMatrix();
 });
