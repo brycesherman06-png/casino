@@ -4,32 +4,158 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>3D Casino</title>
-
-  <!-- Main styles -->
   <link rel="stylesheet" href="styles.css" />
 </head>
 
 <body>
-  <!-- Required for audio + pointer lock -->
-  <div id="overlay">Click to enter</div>
+  <!-- Click-to-enter (pointer lock + audio unlock) -->
+  <div id="overlay">
+    <div class="panel">
+      <h1>3D Casino</h1>
+      <p>Click to Enter</p>
+      <p class="hint">WASD move • Mouse look • Shift sprint • Space jump • V toggle camera • E interact • F talk • ESC pause</p>
+    </div>
+  </div>
 
-  <!-- Three.js renders into this canvas -->
+  <!-- HUD -->
+  <div id="hud">
+    <div class="hud-left">
+      <div id="money">$0</div>
+      <div id="status"></div>
+    </div>
+    <div class="hud-right">
+      <div id="fps">FPS: --</div>
+    </div>
+    <div id="prompt"></div>
+  </div>
+
+  <!-- Interaction UI (mini-games) -->
+  <div id="ui">
+    <div id="gamePanel" class="panel hidden">
+      <div class="row space">
+        <h2 id="gameTitle">Game</h2>
+        <button id="closeGame" class="btn">Close</button>
+      </div>
+
+      <!-- Slots -->
+      <div id="slotsUI" class="hidden">
+        <div class="row">
+          <label>Bet</label>
+          <input id="slotsBet" type="number" min="1" step="1" value="25" />
+          <button id="spinSlots" class="btn">Spin</button>
+        </div>
+        <div id="slotsReels" class="reels">🍒  🍋  ⭐</div>
+        <div id="slotsResult" class="result"></div>
+      </div>
+
+      <!-- Blackjack (simple MVP) -->
+      <div id="bjUI" class="hidden">
+        <div class="row">
+          <label>Bet</label>
+          <input id="bjBet" type="number" min="1" step="1" value="50" />
+          <button id="bjDeal" class="btn">Deal</button>
+          <button id="bjHit" class="btn" disabled>Hit</button>
+          <button id="bjStand" class="btn" disabled>Stand</button>
+        </div>
+        <div class="cards">
+          <div>
+            <h3>Dealer</h3>
+            <div id="dealerCards" class="hand"></div>
+            <div id="dealerScore" class="score"></div>
+          </div>
+          <div>
+            <h3>You</h3>
+            <div id="playerCards" class="hand"></div>
+            <div id="playerScore" class="score"></div>
+          </div>
+        </div>
+        <div id="bjResult" class="result"></div>
+      </div>
+
+      <!-- Roulette (simple MVP) -->
+      <div id="rouUI" class="hidden">
+        <div class="row">
+          <label>Bet</label>
+          <input id="rouBet" type="number" min="1" step="1" value="25" />
+          <label>Pick</label>
+          <select id="rouPick">
+            <option value="red">Red</option>
+            <option value="black">Black</option>
+            <option value="green">Green (0)</option>
+          </select>
+          <button id="rouSpin" class="btn">Spin</button>
+        </div>
+        <div id="rouResult" class="result"></div>
+      </div>
+    </div>
+
+    <!-- Dialogue -->
+    <div id="dialogue" class="panel hidden">
+      <div class="row space">
+        <h2 id="npcName">NPC</h2>
+        <button id="closeDialogue" class="btn">Close</button>
+      </div>
+      <div id="dialogueText" class="dialogueText"></div>
+      <div id="dialogueChoices" class="choices"></div>
+    </div>
+
+    <!-- Pause menu -->
+    <div id="pause" class="panel hidden">
+      <h2>Paused</h2>
+      <div class="row">
+        <button id="resumeBtn" class="btn">Resume</button>
+        <button id="settingsBtn" class="btn">Settings</button>
+      </div>
+      <div class="row">
+        <button id="quitBtn" class="btn danger">Quit to Lobby</button>
+      </div>
+    </div>
+
+    <!-- Settings -->
+    <div id="settings" class="panel hidden">
+      <div class="row space">
+        <h2>Settings</h2>
+        <button id="closeSettings" class="btn">Back</button>
+      </div>
+
+      <div class="setting">
+        <label>Mouse Sensitivity: <span id="sensVal"></span></label>
+        <input id="sens" type="range" min="0.2" max="3" step="0.05" />
+      </div>
+
+      <div class="setting">
+        <label>FOV: <span id="fovVal"></span></label>
+        <input id="fov" type="range" min="60" max="110" step="1" />
+      </div>
+
+      <div class="setting">
+        <label>Master Volume: <span id="volVal"></span></label>
+        <input id="vol" type="range" min="0" max="1" step="0.01" />
+      </div>
+
+      <div class="setting">
+        <label><input id="fog" type="checkbox" /> Fog</label>
+      </div>
+    </div>
+  </div>
+
   <canvas id="c"></canvas>
 
-  <!-- ================= SCRIPTS (ORDER MATTERS) ================= -->
-
-  <!-- 1) Three.js (3D engine) -->
+  <!-- libs -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
-
-  <!-- 2) Howler.js (sound engine — even if sounds are generated) -->
   <script src="https://cdn.jsdelivr.net/npm/howler@2.2.4/dist/howler.min.js"></script>
-
-  <!-- 3) Cannon.js (physics engine) -->
   <script src="https://cdn.jsdelivr.net/npm/cannon@0.6.2/build/cannon.min.js"></script>
 
-  <!-- 4) Your game code (must be LAST) -->
-  <script src="main.js"></script>
+  <!-- prevent right click -->
+  <script>
+    window.addEventListener("contextmenu", e => e.preventDefault());
+  </script>
 
-  <!-- =========================================================== -->
+  <noscript>
+    <p style="color:white;text-align:center;">This game requires JavaScript to run.</p>
+  </noscript>
+
+  <!-- game -->
+  <script src="main.js"></script>
 </body>
 </html>
