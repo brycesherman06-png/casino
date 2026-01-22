@@ -2,8 +2,9 @@ html, body {
   margin: 0;
   height: 100%;
   overflow: hidden;
-  background: #000;
+  background: #05060a;
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  color: #fff;
 }
 
 #c {
@@ -15,13 +16,153 @@ html, body {
 #overlay {
   position: fixed;
   inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0,0,0,0.75);
-  color: #fff;
-  z-index: 9999;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(ellipse at center, rgba(10,12,22,0.85), rgba(0,0,0,0.95));
+  z-index: 50;
   cursor: pointer;
-  user-select: none;
-  font-size: 22px;
+}
+
+.panel {
+  width: min(720px, calc(100vw - 24px));
+  background: rgba(12, 14, 22, 0.92);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 16px;
+  padding: 18px 18px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+}
+
+.hint { opacity: 0.8; font-size: 0.95rem; line-height: 1.3; }
+
+#hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.hud-left, .hud-right {
+  position: absolute;
+  top: 12px;
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 14px;
+  backdrop-filter: blur(6px);
+}
+
+.hud-left { left: 12px; }
+.hud-right { right: 12px; }
+
+#money { font-size: 18px; font-weight: 700; }
+#status { opacity: 0.9; font-size: 13px; }
+#fps { opacity: 0.9; font-size: 13px; }
+
+#prompt {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: rgba(0,0,0,0.35);
+  border: 1px solid rgba(255,255,255,0.12);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+#ui {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+
+#ui .panel {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+}
+
+.hidden { display: none; }
+
+.row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.space { justify-content: space-between; }
+
+.btn {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.08);
+  color: white;
+  cursor: pointer;
+}
+
+.btn:hover { background: rgba(255,255,255,0.12); }
+
+.btn.danger {
+  border-color: rgba(255,80,80,0.4);
+  background: rgba(255,80,80,0.12);
+}
+
+input[type="number"], select {
+  padding: 10px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(0,0,0,0.25);
+  color: white;
+}
+
+.setting {
+  margin-top: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.reels {
+  margin-top: 12px;
+  font-size: 42px;
+  letter-spacing: 8px;
+  text-align: center;
+}
+
+.result { margin-top: 12px; opacity: 0.95; }
+
+.cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.hand {
+  min-height: 40px;
+  padding: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(0,0,0,0.2);
+}
+
+.score { margin-top: 6px; opacity: 0.9; }
+
+.dialogueText {
+  margin-top: 10px;
+  line-height: 1.35;
+  opacity: 0.95;
+}
+
+.choices {
+  margin-top: 12px;
+  display: grid;
+  gap: 10px;
 }
